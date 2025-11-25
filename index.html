@@ -285,40 +285,56 @@ const MUP1 = {
   SOF: 0x3e,  // '>' - Start of Frame
   EOF: 0x3c,  // '<' - End of Frame
   ESC: 0x5c,  // '\' - Escape character
+  ESC_00: 0x30, // '0' - Escaped 0x00
+  ESC_FF: 0x46, // 'F' - Escaped 0xFF
 
-  // Calculate 16-bit one's complement checksum
+  // Calculate 16-bit one's complement checksum (16-bit word sum)
   calcChecksum(data) {
+    // Sum as 16-bit words (big-endian)
     let sum = 0;
-    for (const b of data) sum += b;
-    return ((~sum) & 0xffff).toString(16).padStart(4, '0').toUpperCase();
+    for (let i = 0; i < data.length; i += 2) {
+      const hi = data[i];
+      const lo = (i + 1 < data.length) ? data[i + 1] : 0;
+      sum += (hi << 8) | lo;
+    }
+    // Add carry twice (first addition may cause another carry)
+    sum = ((sum >> 16) + (sum & 0xffff));
+    sum = ((sum >> 16) + (sum & 0xffff));
+    // One's complement
+    sum = (~sum) & 0xffff;
+    return sum.toString(16).padStart(4, '0');
   },
 
   // Encode MUP1 frame
   encode(type, payload) {
+    // Build unescaped frame for checksum calculation
+    const rawFrame = [this.SOF, type.charCodeAt(0), ...payload, this.EOF];
+    if (payload.length % 2 === 0) rawFrame.push(this.EOF);
+
+    // Calculate checksum on raw (unescaped) frame
+    const checksum = this.calcChecksum(rawFrame);
+
+    // Now build escaped frame for transmission
     const frame = [this.SOF, type.charCodeAt(0)];
 
     // Escape special characters in payload
     for (const b of payload) {
       if (b === this.SOF || b === this.EOF || b === this.ESC) {
         frame.push(this.ESC, b);
+      } else if (b === 0x00) {
+        frame.push(this.ESC, this.ESC_00);  // \0
+      } else if (b === 0xff) {
+        frame.push(this.ESC, this.ESC_FF);  // \F
       } else {
         frame.push(b);
       }
     }
 
-    // Add EOF (double if frame length would be odd)
+    // Add EOF (double if data size is even)
     frame.push(this.EOF);
-    if ((frame.length - 1) % 2 === 0) frame.push(this.EOF);
+    if (payload.length % 2 === 0) frame.push(this.EOF);
 
-    // Calculate checksum over type + data (excluding SOF and final EOF padding)
-    const checksumData = frame.slice(1);
-    if (checksumData[checksumData.length - 1] === this.EOF &&
-        checksumData[checksumData.length - 2] === this.EOF) {
-      checksumData.pop();
-    }
-    checksumData.pop(); // Remove EOF for checksum calc
-
-    const checksum = this.calcChecksum(checksumData);
+    // Append checksum as ASCII
     for (const c of checksum) frame.push(c.charCodeAt(0));
 
     return new Uint8Array(frame);
@@ -357,7 +373,14 @@ const MUP1 = {
           }
           break;
         case 'ESCAPE':
-          this.buffer.push(b);
+          // Decode escaped characters
+          if (b === this.ESC_00) {
+            this.buffer.push(0x00);
+          } else if (b === this.ESC_FF) {
+            this.buffer.push(0xff);
+          } else {
+            this.buffer.push(b);  // SOF, EOF, ESC itself
+          }
           this.state = 'DATA';
           break;
         case 'EOF1':
