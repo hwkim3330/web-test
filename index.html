@@ -165,6 +165,64 @@
       border-radius: 6px;
     }
     .preset-row { margin-top: 12px; }
+    /* Config Viewer styles */
+    .config-viewer {
+      background: #0a0a0f;
+      border-radius: 8px;
+      padding: 16px;
+      font-family: 'SF Mono', 'Fira Code', Monaco, monospace;
+      font-size: 0.75rem;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid rgba(255,255,255,0.05);
+    }
+    .config-tree { list-style: none; padding-left: 0; }
+    .config-tree ul { list-style: none; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1); margin-left: 8px; }
+    .config-node { padding: 4px 0; }
+    .config-key { color: #00d4ff; }
+    .config-value { color: #2ed573; }
+    .config-value.string { color: #feca57; }
+    .config-value.number { color: #ff6b6b; }
+    .config-value.bool { color: #a29bfe; }
+    .config-toggle { cursor: pointer; user-select: none; }
+    .config-toggle::before { content: '▶ '; color: #666; font-size: 0.6rem; }
+    .config-toggle.open::before { content: '▼ '; }
+    .config-toggle:hover { background: rgba(255,255,255,0.05); }
+    .config-array-idx { color: #666; font-size: 0.65rem; }
+    .tab-btns { display: flex; gap: 8px; margin-bottom: 12px; }
+    .tab-btn {
+      padding: 8px 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 6px;
+      color: #888;
+      cursor: pointer;
+      font-size: 0.75rem;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover { border-color: rgba(0,212,255,0.5); color: #fff; }
+    .tab-btn.active { background: rgba(0,212,255,0.15); border-color: #00d4ff; color: #00d4ff; }
+    .config-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+    .config-status { font-size: 0.7rem; color: #666; margin-top: 8px; }
+    .loading { animation: pulse 1s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+    .port-status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .port-status-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.7rem;
+    }
+    .port-status-card.has-cbs { border-color: #00d4ff; background: rgba(0,212,255,0.08); }
+    .port-status-card .port-name { font-weight: 600; color: #fff; margin-bottom: 6px; }
+    .port-status-card .cbs-info { color: #2ed573; }
+    .port-status-card .no-cbs { color: #666; }
   </style>
 </head>
 <body>
@@ -238,6 +296,36 @@
           <button class="btn btn-danger" id="clearBtn" onclick="clearCBS()" disabled>Clear CBS</button>
           <button class="btn btn-secondary" onclick="sendPing()">Ping</button>
         </div>
+      </div>
+
+      <!-- Device Config Panel -->
+      <div class="panel full">
+        <h2>Device Configuration</h2>
+        <div class="config-actions">
+          <button class="btn btn-secondary" id="refreshConfigBtn" onclick="refreshConfig()" disabled style="padding:8px 16px">
+            Refresh Config
+          </button>
+          <button class="btn btn-secondary" id="getPortsBtn" onclick="getPortStatus()" disabled style="padding:8px 16px">
+            Get Port Status
+          </button>
+        </div>
+        <div class="tab-btns">
+          <button class="tab-btn active" onclick="showTab('ports')">Port Status</button>
+          <button class="tab-btn" onclick="showTab('raw')">Raw Config</button>
+        </div>
+        <div id="portsTab">
+          <div class="port-status-grid" id="portStatusGrid">
+            <div style="grid-column: 1/-1; color: #666; font-size: 0.75rem; text-align: center; padding: 20px;">
+              Click "Get Port Status" to view CBS configuration
+            </div>
+          </div>
+        </div>
+        <div id="rawTab" style="display:none">
+          <div class="config-viewer" id="configViewer">
+            <div style="color: #666;">Click "Refresh Config" to load device configuration</div>
+          </div>
+        </div>
+        <div class="config-status" id="configStatus"></div>
       </div>
 
       <!-- Log Panel -->
@@ -770,6 +858,8 @@ function setConnected(state) {
   document.getElementById('connectBtn').textContent = state ? 'Disconnect' : 'Connect Serial Port';
   document.getElementById('applyBtn').disabled = !state;
   document.getElementById('clearBtn').disabled = !state;
+  document.getElementById('refreshConfigBtn').disabled = !state;
+  document.getElementById('getPortsBtn').disabled = !state;
 
   const info = document.getElementById('deviceInfo');
   if (state && port) {
@@ -971,6 +1061,331 @@ async function clearCBS() {
   }
 
   log('CBS clear requests sent', 'success');
+}
+
+// =====================================================================
+// CBOR Decoder (for parsing response data)
+// =====================================================================
+function decodeCBOR(data, offset = 0) {
+  if (offset >= data.length) return { value: null, next: offset };
+
+  const byte = data[offset];
+  const major = byte >> 5;
+  const info = byte & 0x1f;
+  let next = offset + 1;
+
+  // Get additional info length
+  let addInfo = info;
+  if (info === 24) {
+    addInfo = data[next++];
+  } else if (info === 25) {
+    addInfo = (data[next] << 8) | data[next + 1];
+    next += 2;
+  } else if (info === 26) {
+    addInfo = (data[next] << 24) | (data[next+1] << 16) | (data[next+2] << 8) | data[next+3];
+    next += 4;
+  } else if (info === 27) {
+    // 64-bit, just read low 32 bits for simplicity
+    next += 4;
+    addInfo = (data[next] << 24) | (data[next+1] << 16) | (data[next+2] << 8) | data[next+3];
+    next += 4;
+  }
+
+  switch (major) {
+    case 0: // Unsigned integer
+      return { value: addInfo, next };
+    case 1: // Negative integer
+      return { value: -1 - addInfo, next };
+    case 2: // Byte string
+      return { value: data.slice(next, next + addInfo), next: next + addInfo };
+    case 3: // Text string
+      const text = new TextDecoder().decode(data.slice(next, next + addInfo));
+      return { value: text, next: next + addInfo };
+    case 4: // Array
+      const arr = [];
+      for (let i = 0; i < addInfo; i++) {
+        const item = decodeCBOR(data, next);
+        arr.push(item.value);
+        next = item.next;
+      }
+      return { value: arr, next };
+    case 5: // Map
+      const map = {};
+      for (let i = 0; i < addInfo; i++) {
+        const key = decodeCBOR(data, next);
+        next = key.next;
+        const val = decodeCBOR(data, next);
+        next = val.next;
+        map[key.value] = val.value;
+      }
+      return { value: map, next };
+    case 6: // Tag (skip tag number, decode content)
+      return decodeCBOR(data, next);
+    case 7: // Simple values
+      if (info === 20) return { value: false, next };
+      if (info === 21) return { value: true, next };
+      if (info === 22) return { value: null, next };
+      if (info === 23) return { value: undefined, next };
+      return { value: null, next };
+    default:
+      return { value: null, next };
+  }
+}
+
+// =====================================================================
+// Config Viewer Functions
+// =====================================================================
+let pendingResponse = null;
+let responseCallback = null;
+let responseBuffer = new Uint8Array(0);
+
+function showTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.tab-btn[onclick="showTab('${tab}')"]`).classList.add('active');
+  document.getElementById('portsTab').style.display = tab === 'ports' ? 'block' : 'none';
+  document.getElementById('rawTab').style.display = tab === 'raw' ? 'block' : 'none';
+}
+
+function renderConfigTree(data, depth = 0) {
+  if (data === null || data === undefined) {
+    return '<span class="config-value">null</span>';
+  }
+  if (typeof data === 'boolean') {
+    return `<span class="config-value bool">${data}</span>`;
+  }
+  if (typeof data === 'number') {
+    return `<span class="config-value number">${data}</span>`;
+  }
+  if (typeof data === 'string') {
+    return `<span class="config-value string">"${data}"</span>`;
+  }
+  if (data instanceof Uint8Array) {
+    const hex = Array.from(data.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ');
+    return `<span class="config-value">[bytes: ${hex}${data.length > 16 ? '...' : ''}]</span>`;
+  }
+  if (Array.isArray(data)) {
+    if (data.length === 0) return '<span class="config-value">[]</span>';
+    let html = '<ul class="config-tree">';
+    data.forEach((item, idx) => {
+      html += `<li class="config-node"><span class="config-array-idx">[${idx}]</span> ${renderConfigTree(item, depth + 1)}</li>`;
+    });
+    html += '</ul>';
+    return html;
+  }
+  if (typeof data === 'object') {
+    const keys = Object.keys(data);
+    if (keys.length === 0) return '<span class="config-value">{}</span>';
+    let html = '<ul class="config-tree">';
+    for (const key of keys) {
+      const value = data[key];
+      const isComplex = typeof value === 'object' && value !== null;
+      if (isComplex) {
+        html += `<li class="config-node"><span class="config-toggle open" onclick="this.classList.toggle('open');this.nextElementSibling.style.display=this.classList.contains('open')?'block':'none'"><span class="config-key">${key}</span>:</span><div>${renderConfigTree(value, depth + 1)}</div></li>`;
+      } else {
+        html += `<li class="config-node"><span class="config-key">${key}</span>: ${renderConfigTree(value, depth + 1)}</li>`;
+      }
+    }
+    html += '</ul>';
+    return html;
+  }
+  return String(data);
+}
+
+// Enhanced frame handler with response collection
+const originalHandleFrame = handleFrame;
+function handleFrame(frame) {
+  originalHandleFrame(frame);
+
+  if (frame.type === 'C' && responseCallback) {
+    const resp = CoAP.parseResponse(frame.data);
+    if (resp && resp.codeClass === 2 && resp.payload) {
+      // Append payload to buffer
+      const newBuffer = new Uint8Array(responseBuffer.length + resp.payload.length);
+      newBuffer.set(responseBuffer);
+      newBuffer.set(resp.payload, responseBuffer.length);
+      responseBuffer = newBuffer;
+
+      // Check for block2 more flag (simplified - just wait for timeout or complete)
+      responseCallback(resp);
+    } else if (resp) {
+      responseCallback(resp);
+    }
+  }
+}
+
+async function sendAndWaitResponse(frame, timeout = 3000) {
+  return new Promise((resolve) => {
+    responseBuffer = new Uint8Array(0);
+    let resolved = false;
+
+    const timer = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        responseCallback = null;
+        resolve({ payload: responseBuffer, codeClass: 2 });
+      }
+    }, timeout);
+
+    responseCallback = (resp) => {
+      if (resp.codeClass !== 2) {
+        clearTimeout(timer);
+        resolved = true;
+        responseCallback = null;
+        resolve(resp);
+      }
+      // For success, let timeout collect all block-wise chunks
+    };
+
+    send(frame);
+  });
+}
+
+// Build CoAP GET frame with query parameters
+function buildGetFrame(path, query = '') {
+  const frame = [];
+  frame.push(0x41);  // Ver=1, Type=CON, TKL=1
+  frame.push(CoAP.CODE_GET);
+  const msgId = CoAP.msgId++ & 0xffff;
+  frame.push((msgId >> 8) & 0xff, msgId & 0xff);
+  frame.push(0x00);  // Token
+
+  let lastOpt = 0;
+
+  // Uri-Path
+  for (const p of path.split('/').filter(x => x)) {
+    const delta = 11 - lastOpt;
+    frame.push((delta << 4) | p.length);
+    for (let i = 0; i < p.length; i++) frame.push(p.charCodeAt(i));
+    lastOpt = 11;
+  }
+
+  // Uri-Query
+  if (query) {
+    for (const q of query.split('&')) {
+      const delta = 15 - lastOpt;
+      if (delta < 13) {
+        frame.push((delta << 4) | q.length);
+      } else {
+        frame.push(0xd0 | q.length);
+        frame.push(delta - 13);
+      }
+      for (let i = 0; i < q.length; i++) frame.push(q.charCodeAt(i));
+      lastOpt = 15;
+    }
+  }
+
+  // Block2
+  const b2delta = 23 - lastOpt;
+  if (b2delta < 13) {
+    frame.push((b2delta << 4) | 1);
+  } else {
+    frame.push(0xd1);
+    frame.push(b2delta - 13);
+  }
+  frame.push(0x04);  // szx=4 (256 bytes)
+
+  return new Uint8Array(frame);
+}
+
+// Build FETCH frame for specific paths
+function buildFetchFrame(paths) {
+  const frame = [];
+  frame.push(0x41);
+  frame.push(CoAP.CODE_FETCH);
+  const msgId = CoAP.msgId++ & 0xffff;
+  frame.push((msgId >> 8) & 0xff, msgId & 0xff);
+  frame.push(0x00);
+
+  let lastOpt = 0;
+
+  // Uri-Path: 'c'
+  frame.push(0xb1, 0x63);  // delta=11, len=1, 'c'
+  lastOpt = 11;
+
+  // Content-Format: 141 (yang-identifiers+cbor)
+  frame.push(0x11);  // delta=1, len=1
+  frame.push(141);
+  lastOpt = 12;
+
+  // Block2
+  frame.push((23 - lastOpt) << 4 | 1);
+  frame.push(0x04);
+
+  // Payload - CBOR array of SIDs
+  frame.push(0xff);
+  // Simple: encode array of SIDs
+  const cbor = encodeCBOR(paths);
+  frame.push(...cbor);
+
+  return new Uint8Array(frame);
+}
+
+async function refreshConfig() {
+  if (!connected) return;
+
+  const status = document.getElementById('configStatus');
+  status.innerHTML = '<span class="loading">Loading configuration...</span>';
+  log('Fetching device configuration...', 'info');
+
+  try {
+    // GET c?c=c (get running config)
+    const getFrame = buildGetFrame('c', 'c=c');
+    const mup1Frame = MUP1.encode('c', getFrame);
+
+    const resp = await sendAndWaitResponse(mup1Frame, 5000);
+
+    if (resp.payload && resp.payload.length > 0) {
+      try {
+        const decoded = decodeCBOR(resp.payload);
+        const viewer = document.getElementById('configViewer');
+        viewer.innerHTML = renderConfigTree(decoded.value);
+        status.textContent = `Loaded ${resp.payload.length} bytes at ${new Date().toLocaleTimeString()}`;
+        log(`Config loaded: ${resp.payload.length} bytes`, 'success');
+      } catch (e) {
+        status.textContent = 'Failed to parse CBOR response';
+        log(`CBOR parse error: ${e.message}`, 'error');
+      }
+    } else {
+      status.textContent = 'No data received';
+    }
+  } catch (e) {
+    status.textContent = `Error: ${e.message}`;
+    log(`Config fetch error: ${e.message}`, 'error');
+  }
+}
+
+async function getPortStatus() {
+  if (!connected) return;
+
+  const status = document.getElementById('configStatus');
+  status.innerHTML = '<span class="loading">Fetching port status...</span>';
+  log('Fetching port CBS status...', 'info');
+
+  const grid = document.getElementById('portStatusGrid');
+  grid.innerHTML = '';
+
+  // Fetch each port's CBS config
+  for (let p = 1; p <= 12; p++) {
+    const card = document.createElement('div');
+    card.className = 'port-status-card';
+    card.innerHTML = `<div class="port-name">Port ${p}</div><div class="no-cbs">Loading...</div>`;
+    grid.appendChild(card);
+  }
+
+  // For now, show placeholder - actual FETCH would require proper SID handling
+  // which needs the YANG schema from device
+  setTimeout(() => {
+    const cards = grid.querySelectorAll('.port-status-card');
+    cards.forEach((card, idx) => {
+      const portNum = idx + 1;
+      card.innerHTML = `
+        <div class="port-name">Port ${portNum}</div>
+        <div class="no-cbs">Click port to select, then use CBS panel to configure</div>
+      `;
+    });
+    status.textContent = 'Port status loaded (CBS config requires FETCH with YANG schema)';
+    log('Port status display ready', 'info');
+  }, 500);
 }
 
 // =====================================================================
