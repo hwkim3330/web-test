@@ -801,6 +801,48 @@
       return new Uint8Array(encode(value));
     }
 
+    // YANG SID Definitions (from .sid files)
+    // These are the YANG Schema Item iDentifiers for CORECONF protocol
+    const YANG_SIDS = {
+      // ietf-interfaces module SIDs
+      INTERFACES: 2005,           // /ietf-interfaces:interfaces
+      INTERFACE: 2033,            // /ietf-interfaces:interfaces/interface (list)
+      INTERFACE_NAME: 2042,       // /ietf-interfaces:interfaces/interface/name
+
+      // mchp-velocitysp-port module SIDs (augments interface)
+      ETH_QOS: 8048,                          // eth-qos container
+      ETH_QOS_CONFIG: 8049,                   // eth-qos/config
+      TRAFFIC_CLASS_SHAPERS: 8051,            // traffic-class-shapers (list)
+      TRAFFIC_CLASS_SHAPERS_TC: 8052,         // traffic-class (key)
+      CREDIT_BASED: 8053,                     // credit-based container
+      IDLE_SLOPE: 8054,                       // idle-slope leaf
+    };
+
+    // Build CBOR Instance Identifier (IID) for iPATCH
+    // IID format for list entries: [SID, key1, key2, ...]
+    function buildCBSIID(portName, trafficClass) {
+      // Path: /ietf-interfaces:interfaces/interface[name='X']/mchp-velocitysp-port:eth-qos/config/traffic-class-shapers[traffic-class=Y]
+      // The SID points to the deepest node: traffic-class-shapers
+      // Keys are: interface name, traffic-class
+      return [YANG_SIDS.TRAFFIC_CLASS_SHAPERS, portName, trafficClass];
+    }
+
+    // Build CBOR value with delta-SID encoding
+    // Delta-SID = child.sid - parent.sid
+    function buildCBSValue(idleSlope) {
+      // Parent is traffic-class-shapers (SID 8051)
+      // credit-based container (SID 8053) -> delta = 8053 - 8051 = 2
+      // idle-slope leaf (SID 8054) -> delta from credit-based = 8054 - 8053 = 1
+      const deltaCreditBased = YANG_SIDS.CREDIT_BASED - YANG_SIDS.TRAFFIC_CLASS_SHAPERS; // = 2
+      const deltaIdleSlope = YANG_SIDS.IDLE_SLOPE - YANG_SIDS.CREDIT_BASED; // = 1
+
+      return {
+        [deltaCreditBased]: {
+          [deltaIdleSlope]: idleSlope
+        }
+      };
+    }
+
     // CBS Operations
     async function applyCBS() {
       if (selectedPorts.size === 0) {
@@ -825,29 +867,23 @@
     }
 
     async function applyCBSToPort(portNum, tc, idleSlope) {
-      // Build CBOR payload for iPATCH request
-      // Path: /ietf-interfaces:interfaces/interface[name='X']/mchp-velocitysp-port:eth-qos/config/traffic-class-shapers
+      // Build iPATCH CBOR payload
+      // Format: { IID => value }
+      // IID: [SID, key1, key2, ...]
+      // Value: delta-SID encoded object
 
-      // SID for interfaces: 29022
-      // We need to build the proper CBOR structure
-      const cbsConfig = {
-        29022: [{  // ietf-interfaces:interfaces
-          3: `${portNum}`,  // name
-          134: {  // mchp-velocitysp-port:eth-qos
-            1: {  // config
-              5: [{  // traffic-class-shapers
-                1: tc,  // traffic-class
-                2: {    // credit-based
-                  1: idleSlope  // idle-slope
-                }
-              }]
-            }
-          }
-        }]
-      };
+      const iid = buildCBSIID(`${portNum}`, tc);
+      const value = buildCBSValue(idleSlope);
 
-      const payload = encodeCBOR(cbsConfig);
-      log(`Setting CBS on port ${portNum}...`, 'info');
+      // iPATCH payload is a CBOR map: { IID => value }
+      const cbsPayload = {};
+      cbsPayload[JSON.stringify(iid)] = value;
+
+      // Encode as CBOR with array key (IID)
+      const payload = encodeCBORInstance(iid, value);
+
+      log(`Setting CBS on port ${portNum}, TC${tc}...`, 'info');
+      log(`IID: [${iid.join(', ')}]`, 'info');
 
       await sendCoAPRequest(CoAP.CODE_IPATCH, 'c', [], payload, {
         onSuccess: () => {
@@ -856,80 +892,152 @@
       });
     }
 
+    // Encode a single CBOR instance for iPATCH: { IID => value }
+    function encodeCBORInstance(iid, value) {
+      const result = [];
+
+      // Map header (1 item)
+      result.push(0xa1);
+
+      // Encode IID as array
+      const iidBytes = encodeCBORArray(iid);
+      result.push(...iidBytes);
+
+      // Encode value as map
+      const valueBytes = encodeCBOR(value);
+      result.push(...valueBytes);
+
+      return new Uint8Array(result);
+    }
+
+    // Encode array for IID
+    function encodeCBORArray(arr) {
+      const result = [];
+      if (arr.length < 24) {
+        result.push(0x80 | arr.length);
+      } else {
+        result.push(0x98, arr.length);
+      }
+      for (const item of arr) {
+        const itemBytes = encodeCBOR(item);
+        result.push(...Array.from(itemBytes));
+      }
+      return result;
+    }
+
     async function clearSelectedCBS() {
       if (selectedPorts.size === 0) {
         log('Please select ports to clear', 'error');
         return;
       }
 
+      const tc = parseInt(document.getElementById('trafficClass').value);
       const ports = Array.from(selectedPorts);
-      log(`Clearing CBS on ports: ${ports.join(',')}`, 'info');
+      log(`Clearing CBS on ports: ${ports.join(',')}, TC${tc}`, 'info');
 
       for (const portNum of ports) {
-        await clearCBSOnPort(portNum);
+        await clearCBSOnPort(portNum, tc);
         await new Promise(resolve => setTimeout(resolve, 500));
       }
 
       log('CBS cleared', 'success');
     }
 
-    async function clearCBSOnPort(portNum) {
-      // Set idle-slope to 0 to disable CBS
-      const cbsConfig = {
-        29022: [{
-          3: `${portNum}`,
-          134: {
-            1: {
-              5: []  // Empty array to clear shapers
-            }
-          }
-        }]
-      };
+    async function clearCBSOnPort(portNum, tc) {
+      // To clear CBS, set the value to null in iPATCH
+      const iid = buildCBSIID(`${portNum}`, tc);
 
-      const payload = encodeCBOR(cbsConfig);
+      // For deletion, value is null
+      const payload = encodeCBORInstance(iid, null);
+
+      log(`Clearing CBS on port ${portNum}, TC${tc}...`, 'info');
       await sendCoAPRequest(CoAP.CODE_IPATCH, 'c', [], payload);
     }
 
     async function refreshConfig() {
       log('Fetching current configuration...', 'info');
 
-      // Fetch all interfaces with config only
-      await sendCoAPRequest(CoAP.CODE_GET, 'c', ['c=c'], null, {
+      // FETCH request for traffic-class-shapers on all ports
+      // Use FETCH with YANG identifiers content type
+      const fetchPayload = buildFetchPayload();
+
+      await sendCoAPRequest(CoAP.CODE_FETCH, 'c', ['c=c'], fetchPayload, {
         onData: (data) => {
           parseAndDisplayConfig(data);
         }
       });
     }
 
+    // Build FETCH payload to query all traffic-class-shapers
+    function buildFetchPayload() {
+      // FETCH uses YANG identifiers - just the SID
+      // Query all traffic-class-shapers
+      return encodeCBOR(YANG_SIDS.TRAFFIC_CLASS_SHAPERS);
+    }
+
     function parseAndDisplayConfig(data) {
       currentConfig = [];
+      log(`Parsing config response...`, 'info');
 
       try {
-        // Parse the CBOR data to find CBS configurations
-        if (data && data[29022]) {  // interfaces
-          const interfaces = data[29022];
-          for (const iface of interfaces) {
-            const portName = iface[3];  // name
-            const ethQos = iface[134];  // mchp-velocitysp-port:eth-qos
-            if (ethQos && ethQos[1] && ethQos[1][5]) {  // config/traffic-class-shapers
-              const shapers = ethQos[1][5];
-              for (const shaper of shapers) {
-                if (shaper[2] && shaper[2][1]) {  // credit-based/idle-slope
-                  currentConfig.push({
-                    port: parseInt(portName),
-                    tc: shaper[1],  // traffic-class
-                    idleSlope: shaper[2][1]  // idle-slope
-                  });
-                }
-              }
-            }
+        // The response is CBOR with delta-SID encoded data
+        // Parse the structure to extract CBS configurations
+        if (Array.isArray(data)) {
+          for (const item of data) {
+            parseCBSFromResponse(item);
           }
+        } else if (typeof data === 'object') {
+          parseCBSFromResponse(data);
         }
       } catch (e) {
         log(`Parse error: ${e.message}`, 'error');
+        console.error('Parse error:', e, data);
       }
 
       renderConfig();
+    }
+
+    function parseCBSFromResponse(data) {
+      // Response format for FETCH: { IID => value }
+      // IID is [SID, keys...]
+      // Value has delta-SID encoded data
+
+      if (typeof data !== 'object') return;
+
+      for (const [key, value] of Object.entries(data)) {
+        // Key might be an array (IID) encoded as string
+        let iid;
+        try {
+          if (Array.isArray(key)) {
+            iid = key;
+          } else if (typeof key === 'string' && key.startsWith('[')) {
+            iid = JSON.parse(key);
+          } else {
+            continue;
+          }
+        } catch {
+          continue;
+        }
+
+        // Check if this is a traffic-class-shapers entry
+        if (iid[0] === YANG_SIDS.TRAFFIC_CLASS_SHAPERS && iid.length >= 3) {
+          const portName = iid[1];
+          const tc = iid[2];
+
+          // Extract idle-slope from value
+          // Delta encoding: credit-based delta=2, idle-slope delta=1
+          const deltaCreditBased = YANG_SIDS.CREDIT_BASED - YANG_SIDS.TRAFFIC_CLASS_SHAPERS;
+          const deltaIdleSlope = YANG_SIDS.IDLE_SLOPE - YANG_SIDS.CREDIT_BASED;
+
+          if (value && value[deltaCreditBased] && value[deltaCreditBased][deltaIdleSlope]) {
+            currentConfig.push({
+              port: parseInt(portName),
+              tc: tc,
+              idleSlope: value[deltaCreditBased][deltaIdleSlope]
+            });
+          }
+        }
+      }
     }
 
     function renderConfig() {
