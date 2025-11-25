@@ -10,6 +10,14 @@ A browser-based Credit Based Shaper (CBS) configuration tool for Microchip Veloc
 - **Multi-port support** - Configure CBS on multiple ports simultaneously
 - **Debug logging** - Full hex dump of TX/RX data for troubleshooting
 
+## Files
+
+| File | Description |
+|------|-------------|
+| `cbs.html` | **Recommended** - Clean CBS-only tool (lightweight, stable) |
+| `index.html` | Full version with config viewer (experimental) |
+| `server.js` | Optional local HTTP server |
+
 ## Requirements
 
 - **Browser**: Chrome 89+ or Edge 89+ (Web Serial API support)
@@ -18,9 +26,9 @@ A browser-based Credit Based Shaper (CBS) configuration tool for Microchip Veloc
 
 ## Quick Start
 
-### Option 1: Open directly
+### Option 1: Open directly (Recommended)
 ```
-1. Open index.html in Chrome or Edge
+1. Open cbs.html in Chrome or Edge
 2. Click "Connect Serial Port"
 3. Select your USB serial device
 4. Select ports and configure CBS
@@ -29,7 +37,7 @@ A browser-based Credit Based Shaper (CBS) configuration tool for Microchip Veloc
 ### Option 2: Local server (optional)
 ```bash
 node server.js
-# Open http://localhost:8080
+# Open http://localhost:8080/cbs.html
 ```
 
 ## Protocol Stack
@@ -172,7 +180,8 @@ a1                    # map(1)
 
 ```
 web-serial/
-├── index.html    # Main application (standalone)
+├── cbs.html      # CBS-only tool (recommended, stable)
+├── index.html    # Full version with config viewer (experimental)
 ├── server.js     # Optional local HTTP server
 └── README.md     # This file
 ```
