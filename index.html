@@ -1,494 +1,806 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VelocityDRIVE-SP CBS Control</title>
+  <title>VelocityDRIVE-SP Manager</title>
   <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #F5F5F7;
+      --card: rgba(255,255,255,0.8);
+      --border: rgba(0,0,0,0.06);
+      --text: #1d1d1f;
+      --text-secondary: #86868b;
+      --blue: #007AFF;
+      --green: #34C759;
+      --red: #FF3B30;
+      --orange: #FF9500;
+      --radius: 20px;
+      --radius-sm: 12px;
+    }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
-      color: #fff;
-      padding: 20px;
+      -webkit-font-smoothing: antialiased;
     }
-    .container { max-width: 1000px; margin: 0 auto; }
-    header {
-      text-align: center;
-      margin-bottom: 30px;
-      padding: 20px;
+
+    .app { display: flex; min-height: 100vh; }
+
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background: var(--bg);
+      border-right: 1px solid var(--border);
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      z-index: 100;
     }
-    header h1 {
-      font-size: 2rem;
-      background: linear-gradient(90deg, #00d4ff, #7b2cbf);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 12px;
+      margin-bottom: 32px;
     }
-    header p { color: #888; font-size: 0.9rem; margin-top: 8px; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 768px) { .grid { grid-template-columns: 1fr; } }
-    .panel {
-      background: rgba(255,255,255,0.03);
-      border-radius: 16px;
-      padding: 24px;
-      border: 1px solid rgba(255,255,255,0.08);
-      backdrop-filter: blur(10px);
+
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: linear-gradient(135deg, #007AFF, #5856D6);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(0,122,255,0.3);
     }
-    .panel.full { grid-column: 1 / -1; }
-    .panel h2 {
-      font-size: 0.9rem;
-      color: #00d4ff;
-      margin-bottom: 16px;
+
+    .logo-icon svg { width: 22px; height: 22px; color: white; }
+    .logo-text h1 { font-size: 14px; font-weight: 700; color: var(--text); }
+    .logo-text p { font-size: 10px; color: var(--text-secondary); font-weight: 500; }
+
+    .nav-section { margin-bottom: 24px; }
+    .nav-title {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-secondary);
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 0.5px;
+      padding: 0 16px;
+      margin-bottom: 8px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+
+    .nav-item:hover { background: rgba(0,0,0,0.04); color: var(--text); }
+    .nav-item.active {
+      background: white;
+      color: var(--blue);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    }
+    .nav-item svg { width: 18px; height: 18px; opacity: 0.7; }
+    .nav-item.active svg { opacity: 1; color: var(--blue); }
+
+    .device-card {
+      margin-top: auto;
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid var(--border);
+    }
+
+    .device-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .device-label { font-size: 10px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      position: relative;
+    }
+
+    .status-dot.connected {
+      background: var(--green);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(52,199,89,0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(52,199,89,0); }
+    }
+
+    .device-info { display: flex; align-items: center; gap: 12px; }
+    .device-icon {
+      width: 36px;
+      height: 36px;
+      background: var(--bg);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .device-icon svg { width: 18px; height: 18px; color: var(--text-secondary); }
+    .device-name { font-size: 12px; font-weight: 600; }
+    .device-type { font-size: 10px; color: var(--text-secondary); }
+
+    /* Main Content */
+    .main {
+      flex: 1;
+      margin-left: 260px;
+      padding: 24px 32px;
+      overflow-y: auto;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 24px;
+    }
+
+    .header h2 { font-size: 24px; font-weight: 700; }
+
+    .header-actions { display: flex; gap: 12px; align-items: center; }
+
+    .search-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+    }
+
+    .search-box input {
+      border: none;
+      outline: none;
+      font-size: 13px;
+      width: 160px;
+      background: transparent;
+    }
+
+    .search-box svg { width: 16px; height: 16px; color: var(--text-secondary); }
+
+    /* Status Banner */
+    .status-banner {
+      background: white;
+      border-radius: var(--radius);
+      padding: 32px;
+      margin-bottom: 24px;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .status-banner.connected { border-color: rgba(52,199,89,0.3); }
+    .status-banner.error { border-color: rgba(255,59,48,0.3); background: #FFF5F5; }
+
+    .status-glow {
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 300px;
+      height: 300px;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+
+    .status-banner.connected .status-glow { background: var(--green); }
+    .status-banner.error .status-glow { background: var(--red); }
+    .status-banner:not(.connected):not(.error) .status-glow { background: var(--text-secondary); }
+
+    .status-content { position: relative; z-index: 1; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 12px;
+    }
+
+    .status-badge.success { color: var(--green); }
+    .status-badge.error { color: var(--red); }
+    .status-badge.idle { color: var(--text-secondary); }
+
+    .status-title { font-size: 28px; font-weight: 700; margin-bottom: 8px; }
+    .status-desc { font-size: 14px; color: var(--text-secondary); line-height: 1.6; max-width: 500px; }
+
+    .status-actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
+    }
+
+    .btn {
+      padding: 12px 24px;
+      border-radius: 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      color: white;
+      box-shadow: 0 4px 12px rgba(0,122,255,0.3);
+    }
+
+    .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(0,122,255,0.4); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    .btn-secondary {
+      background: white;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+
+    .btn-secondary:hover { background: var(--bg); }
+
+    .btn-danger {
+      background: var(--red);
+      color: white;
+    }
+
+    /* Grid Layout */
+    .grid { display: grid; gap: 20px; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+    @media (max-width: 1200px) {
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 900px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    }
+
+    /* Cards */
+    .card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      border: 1px solid var(--border);
+    }
+
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .status-dot {
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #ff4757;
+
+    .card-title svg { width: 16px; height: 16px; color: var(--blue); }
+
+    /* Metric Cards */
+    .metric-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px;
+      border: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
     }
-    .status-dot.connected { background: #2ed573; }
-    .btn {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      font-weight: 600;
-      font-size: 0.85rem;
-      transition: all 0.2s;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
+
+    .metric-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
     }
-    .btn-primary {
-      background: linear-gradient(135deg, #00d4ff, #0099cc);
-      color: #000;
-    }
-    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,212,255,0.3); }
-    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
-    .btn-danger { background: linear-gradient(135deg, #ff4757, #c0392b); color: #fff; }
-    .btn-secondary {
-      background: transparent;
-      color: #888;
-      border: 1px solid rgba(255,255,255,0.2);
-    }
-    .btn-secondary:hover { border-color: #00d4ff; color: #00d4ff; }
-    .form-group { margin-bottom: 16px; }
-    .form-group label {
-      display: block;
-      font-size: 0.75rem;
-      color: #666;
-      margin-bottom: 6px;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    select, input[type="number"] {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 8px;
-      background: rgba(0,0,0,0.3);
-      color: #fff;
-      font-size: 1rem;
-    }
-    select:focus, input:focus { outline: none; border-color: #00d4ff; }
+
+    .metric-icon.blue { background: rgba(0,122,255,0.1); color: var(--blue); }
+    .metric-icon.green { background: rgba(52,199,89,0.1); color: var(--green); }
+    .metric-icon.orange { background: rgba(255,149,0,0.1); color: var(--orange); }
+
+    .metric-icon svg { width: 22px; height: 22px; }
+
+    .metric-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .metric-value { font-size: 28px; font-weight: 700; }
+    .metric-sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+
+    /* Port Grid */
     .port-grid {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 8px;
     }
+
     .port-btn {
-      padding: 14px 8px;
-      background: rgba(255,255,255,0.03);
-      border: 2px solid rgba(255,255,255,0.08);
-      border-radius: 8px;
-      color: #888;
-      cursor: pointer;
+      padding: 16px 8px;
+      background: var(--bg);
+      border: 2px solid transparent;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
       font-weight: 600;
-      font-size: 0.85rem;
+      color: var(--text-secondary);
+      cursor: pointer;
       transition: all 0.2s;
     }
-    .port-btn:hover { border-color: rgba(0,212,255,0.5); color: #fff; }
-    .port-btn.selected {
-      background: rgba(0,212,255,0.15);
-      border-color: #00d4ff;
-      color: #00d4ff;
+
+    .port-btn:hover { border-color: rgba(0,122,255,0.3); color: var(--text); }
+    .port-btn.selected { background: rgba(0,122,255,0.1); border-color: var(--blue); color: var(--blue); }
+
+    .port-presets {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      flex-wrap: wrap;
     }
-    .quick-btns {
+
+    .preset-btn {
+      padding: 6px 12px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .preset-btn:hover { background: white; color: var(--text); }
+
+    /* Form Elements */
+    .form-group { margin-bottom: 16px; }
+    .form-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; display: block; }
+
+    .form-select, .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: all 0.2s;
+    }
+
+    .form-select:focus, .form-input:focus {
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(0,122,255,0.1);
+    }
+
+    /* Terminal */
+    .terminal {
+      background: #1C1C1E;
+      border-radius: var(--radius);
+      padding: 20px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 11px;
+      color: #98989D;
+      height: 300px;
+      overflow-y: auto;
+    }
+
+    .terminal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .terminal-dots { display: flex; gap: 6px; }
+    .terminal-dot { width: 10px; height: 10px; border-radius: 50%; }
+    .terminal-dot.red { background: #FF5F57; }
+    .terminal-dot.yellow { background: #FEBC2E; }
+    .terminal-dot.green { background: #28C840; }
+
+    .terminal-title { font-size: 11px; font-weight: 600; color: #636366; }
+
+    .log-line { margin-bottom: 6px; line-height: 1.5; }
+    .log-time { color: #48484A; margin-right: 12px; }
+    .log-info { color: #64D2FF; }
+    .log-success { color: #30D158; }
+    .log-error { color: #FF453A; }
+    .log-tx { color: #FFD60A; }
+    .log-rx { color: #32D74B; }
+    .log-debug { color: #BF5AF2; }
+
+    .terminal-prompt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+
+    .prompt-user { color: #30D158; font-weight: 600; }
+    .prompt-cursor { width: 8px; height: 16px; background: #636366; animation: blink 1s infinite; }
+
+    @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+    /* Animations */
+    .fade-in { animation: fadeIn 0.3s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.2); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(0,0,0,0.3); }
+
+    /* Quick presets row */
+    .presets-row {
       display: flex;
       gap: 8px;
       flex-wrap: wrap;
-      margin-top: 12px;
+      margin-top: 8px;
     }
-    .quick-btn {
-      padding: 6px 12px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 6px;
-      color: #888;
-      cursor: pointer;
-      font-size: 0.75rem;
-    }
-    .quick-btn:hover { background: rgba(255,255,255,0.1); color: #fff; }
-    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .action-btns { display: flex; gap: 12px; margin-top: 20px; }
-    .action-btns .btn { flex: 1; }
-    .log-area {
-      background: #0a0a0f;
-      border-radius: 8px;
-      padding: 16px;
-      font-family: 'SF Mono', 'Fira Code', Monaco, monospace;
-      font-size: 0.7rem;
-      height: 300px;
-      overflow-y: auto;
-      border: 1px solid rgba(255,255,255,0.05);
-      line-height: 1.6;
-    }
-    .log-line { margin-bottom: 2px; }
-    .log-line.error { color: #ff6b6b; }
-    .log-line.success { color: #51cf66; }
-    .log-line.info { color: #74c0fc; }
-    .log-line.tx { color: #fcc419; }
-    .log-line.rx { color: #69db7c; }
-    .log-line.debug { color: #da77f2; }
-    .log-header { display: flex; justify-content: space-between; align-items: center; }
-    .device-info {
-      font-size: 0.75rem;
-      color: #666;
-      margin-top: 12px;
-      padding: 8px 12px;
-      background: rgba(0,0,0,0.2);
-      border-radius: 6px;
-    }
-    .preset-row { margin-top: 12px; }
-    /* Config Viewer styles */
-    .config-viewer {
-      background: #0a0a0f;
-      border-radius: 8px;
-      padding: 16px;
-      font-family: 'SF Mono', 'Fira Code', Monaco, monospace;
-      font-size: 0.75rem;
-      max-height: 400px;
-      overflow-y: auto;
-      border: 1px solid rgba(255,255,255,0.05);
-    }
-    .config-tree { list-style: none; padding-left: 0; }
-    .config-tree ul { list-style: none; padding-left: 20px; border-left: 1px solid rgba(255,255,255,0.1); margin-left: 8px; }
-    .config-node { padding: 4px 0; }
-    .config-key { color: #00d4ff; }
-    .config-value { color: #2ed573; }
-    .config-value.string { color: #feca57; }
-    .config-value.number { color: #ff6b6b; }
-    .config-value.bool { color: #a29bfe; }
-    .config-toggle { cursor: pointer; user-select: none; }
-    .config-toggle::before { content: '▶ '; color: #666; font-size: 0.6rem; }
-    .config-toggle.open::before { content: '▼ '; }
-    .config-toggle:hover { background: rgba(255,255,255,0.05); }
-    .config-array-idx { color: #666; font-size: 0.65rem; }
-    .tab-btns { display: flex; gap: 8px; margin-bottom: 12px; }
-    .tab-btn {
-      padding: 8px 16px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 6px;
-      color: #888;
-      cursor: pointer;
-      font-size: 0.75rem;
-      transition: all 0.2s;
-    }
-    .tab-btn:hover { border-color: rgba(0,212,255,0.5); color: #fff; }
-    .tab-btn.active { background: rgba(0,212,255,0.15); border-color: #00d4ff; color: #00d4ff; }
-    .config-actions { display: flex; gap: 8px; margin-bottom: 12px; }
-    .config-status { font-size: 0.7rem; color: #666; margin-top: 8px; }
-    .loading { animation: pulse 1s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-    .port-status-grid {
+
+    .form-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-      margin-top: 12px;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
     }
-    .port-status-card {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.08);
-      border-radius: 8px;
-      padding: 12px;
-      font-size: 0.7rem;
+
+    .action-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 24px;
     }
-    .port-status-card.has-cbs { border-color: #00d4ff; background: rgba(0,212,255,0.08); }
-    .port-status-card .port-name { font-weight: 600; color: #fff; margin-bottom: 6px; }
-    .port-status-card .cbs-info { color: #2ed573; }
-    .port-status-card .no-cbs { color: #666; }
+
+    .action-row .btn { flex: 1; justify-content: center; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <header>
-      <h1>VelocityDRIVE-SP CBS Control</h1>
-      <p>Credit Based Shaper Configuration via Web Serial</p>
-    </header>
-
-    <div class="grid">
-      <!-- Connection Panel -->
-      <div class="panel">
-        <h2><span class="status-dot" id="statusDot"></span>Connection</h2>
-        <button class="btn btn-primary" id="connectBtn" onclick="toggleConnection()">
-          Connect Serial Port
-        </button>
-        <div class="device-info" id="deviceInfo">
-          Web Serial API required (Chrome 89+ / Edge 89+)<br>
-          Open this file directly or via localhost
+  <div class="app">
+    <!-- Sidebar -->
+    <nav class="sidebar">
+      <div class="logo">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+        </div>
+        <div class="logo-text">
+          <h1>VelocityDRIVE</h1>
+          <p>TSN Manager</p>
         </div>
       </div>
 
-      <!-- Port Selection Panel -->
-      <div class="panel">
-        <h2>Port Selection</h2>
-        <div class="port-grid" id="portGrid"></div>
-        <div class="quick-btns">
-          <button class="quick-btn" onclick="selectPorts([1,2,3,4])">1-4</button>
-          <button class="quick-btn" onclick="selectPorts([5,6,7,8])">5-8</button>
-          <button class="quick-btn" onclick="selectPorts([9,10,11,12])">9-12</button>
-          <button class="quick-btn" onclick="selectAllPorts()">All</button>
-          <button class="quick-btn" onclick="clearPorts()">Clear</button>
+      <div class="nav-section">
+        <div class="nav-title">Control</div>
+        <div class="nav-item active" onclick="showTab('dashboard')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+          Dashboard
+        </div>
+        <div class="nav-item" onclick="showTab('cbs')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          CBS Config
         </div>
       </div>
 
-      <!-- CBS Configuration Panel -->
-      <div class="panel full">
-        <h2>CBS Configuration</h2>
-        <div class="form-row">
-          <div class="form-group">
-            <label>Traffic Class</label>
-            <select id="trafficClass">
-              <option value="7">TC 7 - Highest Priority (Network Control)</option>
-              <option value="6">TC 6 - Voice</option>
-              <option value="5">TC 5 - Video</option>
-              <option value="4">TC 4 - Controlled Load</option>
-              <option value="3">TC 3 - Excellent Effort</option>
-              <option value="2">TC 2 - Spare</option>
-              <option value="1">TC 1 - Background</option>
-              <option value="0">TC 0 - Best Effort</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Idle Slope (kbps)</label>
-            <input type="number" id="idleSlope" value="100000" min="0" max="1000000" step="1000">
-          </div>
-        </div>
-        <div class="preset-row">
-          <label style="font-size:0.7rem;color:#666;text-transform:uppercase">Presets</label>
-          <div class="quick-btns" style="margin-top:6px">
-            <button class="quick-btn" onclick="setIdleSlope(10000)">10 Mbps</button>
-            <button class="quick-btn" onclick="setIdleSlope(25000)">25 Mbps</button>
-            <button class="quick-btn" onclick="setIdleSlope(50000)">50 Mbps</button>
-            <button class="quick-btn" onclick="setIdleSlope(100000)">100 Mbps</button>
-            <button class="quick-btn" onclick="setIdleSlope(250000)">250 Mbps</button>
-            <button class="quick-btn" onclick="setIdleSlope(500000)">500 Mbps</button>
-          </div>
-        </div>
-        <div class="action-btns">
-          <button class="btn btn-primary" id="applyBtn" onclick="applyCBS()" disabled>Apply CBS</button>
-          <button class="btn btn-danger" id="clearBtn" onclick="clearCBS()" disabled>Clear CBS</button>
-          <button class="btn btn-secondary" onclick="sendPing()">Ping</button>
+      <div class="nav-section">
+        <div class="nav-title">System</div>
+        <div class="nav-item" onclick="showTab('logs')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Logs
         </div>
       </div>
 
-      <!-- Device Config Panel -->
-      <div class="panel full">
-        <h2>Device Configuration</h2>
-        <div class="config-actions">
-          <button class="btn btn-secondary" id="refreshConfigBtn" onclick="refreshConfig()" disabled style="padding:8px 16px">
-            Refresh Config
-          </button>
-          <button class="btn btn-secondary" id="getPortsBtn" onclick="getPortStatus()" disabled style="padding:8px 16px">
-            Get Port Status
-          </button>
+      <div class="device-card">
+        <div class="device-header">
+          <span class="device-label">Device</span>
+          <span class="status-dot" id="sidebarDot"></span>
         </div>
-        <div class="tab-btns">
-          <button class="tab-btn active" onclick="showTab('ports')">Port Status</button>
-          <button class="tab-btn" onclick="showTab('raw')">Raw Config</button>
+        <div class="device-info">
+          <div class="device-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6v6H9z"/></svg>
+          </div>
+          <div>
+            <div class="device-name" id="deviceName">Not Connected</div>
+            <div class="device-type">VelocityDRIVE-SP</div>
+          </div>
         </div>
-        <div id="portsTab">
-          <div class="port-status-grid" id="portStatusGrid">
-            <div style="grid-column: 1/-1; color: #666; font-size: 0.75rem; text-align: center; padding: 20px;">
-              Click "Get Port Status" to view CBS configuration
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+      <div class="header">
+        <h2 id="pageTitle">Dashboard</h2>
+        <div class="header-actions">
+          <div class="search-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <input type="text" placeholder="Search...">
+          </div>
+        </div>
+      </div>
+
+      <!-- Dashboard Tab -->
+      <div id="dashboardTab" class="fade-in">
+        <!-- Status Banner -->
+        <div class="status-banner" id="statusBanner">
+          <div class="status-glow"></div>
+          <div class="status-content">
+            <div class="status-badge idle" id="statusBadge">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>
+              <span id="statusText">Disconnected</span>
+            </div>
+            <h3 class="status-title" id="statusTitle">Connect to Device</h3>
+            <p class="status-desc" id="statusDesc">Click the connect button to establish a serial connection with your VelocityDRIVE-SP switch.</p>
+            <div class="status-actions">
+              <button class="btn btn-primary" id="connectBtn" onclick="toggleConnection()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+                Connect
+              </button>
+              <button class="btn btn-secondary" onclick="sendPing()" id="pingBtn" disabled>Ping Device</button>
             </div>
           </div>
         </div>
-        <div id="rawTab" style="display:none">
-          <div class="config-viewer" id="configViewer">
-            <div style="color: #666;">Click "Refresh Config" to load device configuration</div>
+
+        <!-- Metrics Grid -->
+        <div class="grid grid-3" style="margin-bottom: 24px;">
+          <div class="metric-card">
+            <div class="metric-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+            </div>
+            <div class="metric-label">Connection</div>
+            <div class="metric-value" id="connMetric">--</div>
+            <div class="metric-sub" id="connSub">Not connected</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>
+            </div>
+            <div class="metric-label">Firmware</div>
+            <div class="metric-value" id="fwMetric">--</div>
+            <div class="metric-sub" id="fwSub">Unknown</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-icon orange">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12,6 12,12 16,14"/></svg>
+            </div>
+            <div class="metric-label">Uptime</div>
+            <div class="metric-value" id="uptimeMetric">--</div>
+            <div class="metric-sub">Since boot</div>
           </div>
         </div>
-        <div class="config-status" id="configStatus"></div>
+
+        <!-- Terminal -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,17 10,11 4,5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              Communication Log
+            </div>
+            <button class="btn btn-secondary" onclick="clearLog()" style="padding: 6px 12px; font-size: 11px;">Clear</button>
+          </div>
+          <div class="terminal" id="logArea">
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+              </div>
+              <div class="terminal-title">MUP1/CoAP Output</div>
+            </div>
+            <div id="logContent"></div>
+            <div class="terminal-prompt">
+              <span class="prompt-user">admin@velocitysp:~$</span>
+              <span class="prompt-cursor"></span>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <!-- Log Panel -->
-      <div class="panel full">
-        <div class="log-header">
-          <h2>Communication Log</h2>
-          <button class="btn btn-secondary" onclick="clearLog()" style="padding:6px 12px;font-size:0.7rem">Clear</button>
+      <!-- CBS Config Tab -->
+      <div id="cbsTab" style="display: none;" class="fade-in">
+        <div class="grid grid-2">
+          <!-- Port Selection -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+                Port Selection
+              </div>
+            </div>
+            <div class="port-grid" id="portGrid"></div>
+            <div class="port-presets">
+              <button class="preset-btn" onclick="selectPorts([1,2,3,4])">1-4</button>
+              <button class="preset-btn" onclick="selectPorts([5,6,7,8])">5-8</button>
+              <button class="preset-btn" onclick="selectPorts([9,10,11,12])">9-12</button>
+              <button class="preset-btn" onclick="selectAllPorts()">All</button>
+              <button class="preset-btn" onclick="clearPorts()">Clear</button>
+            </div>
+          </div>
+
+          <!-- CBS Settings -->
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v10"/><path d="M20.66 7l-5.2 3m-6.92 4l-5.2 3"/><path d="M3.34 7l5.2 3m6.92 4l5.2 3"/></svg>
+                CBS Parameters
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Traffic Class</label>
+                <select class="form-select" id="trafficClass">
+                  <option value="7">TC 7 - Network Control</option>
+                  <option value="6">TC 6 - Voice</option>
+                  <option value="5">TC 5 - Video</option>
+                  <option value="4">TC 4 - Controlled Load</option>
+                  <option value="3">TC 3 - Excellent Effort</option>
+                  <option value="2">TC 2 - Spare</option>
+                  <option value="1">TC 1 - Background</option>
+                  <option value="0">TC 0 - Best Effort</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Idle Slope (kbps)</label>
+                <input type="number" class="form-input" id="idleSlope" value="100000" min="0" max="1000000" step="1000">
+              </div>
+            </div>
+            <div class="presets-row">
+              <button class="preset-btn" onclick="setIdleSlope(10000)">10 Mbps</button>
+              <button class="preset-btn" onclick="setIdleSlope(50000)">50 Mbps</button>
+              <button class="preset-btn" onclick="setIdleSlope(100000)">100 Mbps</button>
+              <button class="preset-btn" onclick="setIdleSlope(250000)">250 Mbps</button>
+              <button class="preset-btn" onclick="setIdleSlope(500000)">500 Mbps</button>
+            </div>
+            <div class="action-row">
+              <button class="btn btn-primary" id="applyBtn" onclick="applyCBS()" disabled>Apply CBS</button>
+              <button class="btn btn-danger" id="clearCbsBtn" onclick="clearCBS()" disabled>Clear CBS</button>
+            </div>
+          </div>
         </div>
-        <div class="log-area" id="logArea"></div>
       </div>
-    </div>
+
+      <!-- Logs Tab -->
+      <div id="logsTab" style="display: none;" class="fade-in">
+        <div class="card" style="height: calc(100vh - 160px);">
+          <div class="card-header">
+            <div class="card-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4,17 10,11 4,5"/><line x1="12" y1="19" x2="20" y2="19"/></svg>
+              Full System Logs
+            </div>
+            <button class="btn btn-secondary" onclick="clearLog()" style="padding: 6px 12px; font-size: 11px;">Clear</button>
+          </div>
+          <div class="terminal" id="fullLogArea" style="height: calc(100% - 60px);">
+            <div class="terminal-header">
+              <div class="terminal-dots">
+                <div class="terminal-dot red"></div>
+                <div class="terminal-dot yellow"></div>
+                <div class="terminal-dot green"></div>
+              </div>
+              <div class="terminal-title">LIVE</div>
+            </div>
+            <div id="fullLogContent"></div>
+          </div>
+        </div>
+      </div>
+    </main>
   </div>
 
 <script>
 // =====================================================================
-// VelocityDRIVE-SP CBS Control - Web Serial Implementation
+// YANG SID Definitions
 // =====================================================================
-// Protocol Stack:
-//   Web Serial API -> MUP1 (UART framing) -> CoAP -> CBOR (YANG/CORECONF)
-// =====================================================================
+const SID = { TRAFFIC_CLASS_SHAPERS: 8051, TRAFFIC_CLASS: 8052, CREDIT_BASED: 8053, IDLE_SLOPE: 8054 };
+const DELTA = { TC: 1, CB: 2, IS: 1 };
 
 // =====================================================================
-// YANG SID Definitions (from mchp-velocitysp-port@2025-01-20.sid)
-// =====================================================================
-const SID = {
-  // Path: /ietf-interfaces:interfaces/interface/mchp-velocitysp-port:eth-qos/config/traffic-class-shapers
-  TRAFFIC_CLASS_SHAPERS: 8051,  // list
-  TRAFFIC_CLASS: 8052,          // leaf (key) - delta from 8051 = 1
-  CREDIT_BASED: 8053,           // container - delta from 8051 = 2
-  IDLE_SLOPE: 8054,             // leaf - delta from 8053 = 1
-};
-
-// Delta-SID values (used in CBOR encoding)
-const DELTA = {
-  TC: SID.TRAFFIC_CLASS - SID.TRAFFIC_CLASS_SHAPERS,        // 1
-  CB: SID.CREDIT_BASED - SID.TRAFFIC_CLASS_SHAPERS,         // 2
-  IS: SID.IDLE_SLOPE - SID.CREDIT_BASED,                    // 1
-};
-
-// =====================================================================
-// MUP1 Protocol (Microchip UART Protocol 1)
-// Frame format: SOF + Type + Data + EOF + Checksum
+// MUP1 Protocol
 // =====================================================================
 const MUP1 = {
-  SOF: 0x3e,  // '>' - Start of Frame
-  EOF: 0x3c,  // '<' - End of Frame
-  ESC: 0x5c,  // '\' - Escape character
-  ESC_00: 0x30, // '0' - Escaped 0x00
-  ESC_FF: 0x46, // 'F' - Escaped 0xFF
+  SOF: 0x3e, EOF: 0x3c, ESC: 0x5c, ESC_00: 0x30, ESC_FF: 0x46,
 
-  // Calculate 16-bit one's complement checksum (16-bit word sum)
   calcChecksum(data) {
-    // Sum as 16-bit words (big-endian)
     let sum = 0;
     for (let i = 0; i < data.length; i += 2) {
-      const hi = data[i];
-      const lo = (i + 1 < data.length) ? data[i + 1] : 0;
-      sum += (hi << 8) | lo;
+      sum += (data[i] << 8) | (data[i + 1] || 0);
     }
-    // Add carry twice (first addition may cause another carry)
     sum = ((sum >> 16) + (sum & 0xffff));
     sum = ((sum >> 16) + (sum & 0xffff));
-    // One's complement
-    sum = (~sum) & 0xffff;
-    return sum.toString(16).padStart(4, '0');
+    return ((~sum) & 0xffff).toString(16).padStart(4, '0');
   },
 
-  // Encode MUP1 frame
   encode(type, payload) {
-    // Build unescaped frame for checksum calculation
     const rawFrame = [this.SOF, type.charCodeAt(0), ...payload, this.EOF];
     if (payload.length % 2 === 0) rawFrame.push(this.EOF);
-
-    // Calculate checksum on raw (unescaped) frame
     const checksum = this.calcChecksum(rawFrame);
 
-    // Now build escaped frame for transmission
     const frame = [this.SOF, type.charCodeAt(0)];
-
-    // Escape special characters in payload
     for (const b of payload) {
-      if (b === this.SOF || b === this.EOF || b === this.ESC) {
-        frame.push(this.ESC, b);
-      } else if (b === 0x00) {
-        frame.push(this.ESC, this.ESC_00);  // \0
-      } else if (b === 0xff) {
-        frame.push(this.ESC, this.ESC_FF);  // \F
-      } else {
-        frame.push(b);
-      }
+      if (b === this.SOF || b === this.EOF || b === this.ESC) frame.push(this.ESC, b);
+      else if (b === 0x00) frame.push(this.ESC, this.ESC_00);
+      else if (b === 0xff) frame.push(this.ESC, this.ESC_FF);
+      else frame.push(b);
     }
-
-    // Add EOF (double if data size is even)
     frame.push(this.EOF);
     if (payload.length % 2 === 0) frame.push(this.EOF);
-
-    // Append checksum as ASCII
     for (const c of checksum) frame.push(c.charCodeAt(0));
-
     return new Uint8Array(frame);
   },
 
-  createPing() {
-    return this.encode('p', []);
-  },
+  createPing() { return this.encode('p', []); },
 
-  // Parser state machine
-  state: 'IDLE',
-  buffer: [],
-
-  reset() {
-    this.state = 'IDLE';
-    this.buffer = [];
-  },
+  state: 'IDLE', buffer: [],
+  reset() { this.state = 'IDLE'; this.buffer = []; },
 
   parse(bytes) {
     const frames = [];
     for (const b of bytes) {
       switch (this.state) {
-        case 'IDLE':
-          if (b === this.SOF) {
-            this.buffer = [];
-            this.state = 'DATA';
-          }
-          break;
+        case 'IDLE': if (b === this.SOF) { this.buffer = []; this.state = 'DATA'; } break;
         case 'DATA':
-          if (b === this.ESC) {
-            this.state = 'ESCAPE';
-          } else if (b === this.EOF) {
-            this.state = 'EOF1';
-          } else {
-            this.buffer.push(b);
-          }
+          if (b === this.ESC) this.state = 'ESCAPE';
+          else if (b === this.EOF) this.state = 'EOF1';
+          else this.buffer.push(b);
           break;
         case 'ESCAPE':
-          // Decode escaped characters
-          if (b === this.ESC_00) {
-            this.buffer.push(0x00);
-          } else if (b === this.ESC_FF) {
-            this.buffer.push(0xff);
-          } else {
-            this.buffer.push(b);  // SOF, EOF, ESC itself
-          }
+          this.buffer.push(b === this.ESC_00 ? 0x00 : b === this.ESC_FF ? 0xff : b);
           this.state = 'DATA';
           break;
         case 'EOF1':
-          if (b === this.EOF) {
-            this.state = 'CHECKSUM';
-          } else if (/[0-9A-Fa-f]/.test(String.fromCharCode(b))) {
-            this.state = 'CHECKSUM';
-            this.buffer.push(b);
-          } else {
-            this.state = 'IDLE';
-          }
+          if (b === this.EOF) this.state = 'CHECKSUM';
+          else if (/[0-9A-Fa-f]/.test(String.fromCharCode(b))) { this.state = 'CHECKSUM'; this.buffer.push(b); }
+          else this.state = 'IDLE';
           break;
         case 'CHECKSUM':
           this.buffer.push(b);
           if (this.buffer.length >= 4) {
-            const typeChar = String.fromCharCode(this.buffer[0]);
-            const data = new Uint8Array(this.buffer.slice(1, -4));
-            frames.push({ type: typeChar, data });
-            this.state = 'IDLE';
-            this.buffer = [];
+            frames.push({ type: String.fromCharCode(this.buffer[0]), data: new Uint8Array(this.buffer.slice(1, -4)) });
+            this.state = 'IDLE'; this.buffer = [];
           }
           break;
       }
@@ -498,417 +810,189 @@ const MUP1 = {
 };
 
 // =====================================================================
-// CoAP Protocol (RFC 7252)
+// CoAP Protocol
 // =====================================================================
 const CoAP = {
-  // Method codes
-  CODE_GET: 1,
-  CODE_POST: 2,
-  CODE_PUT: 3,
-  CODE_DELETE: 4,
-  CODE_FETCH: 5,
-  CODE_IPATCH: 7,
-
-  // Content formats
-  FORMAT_YANG_DATA_CBOR: 140,
-  FORMAT_YANG_IDENTIFIERS_CBOR: 141,
-  FORMAT_YANG_INSTANCES_CBOR: 142,
-
+  CODE_IPATCH: 7, FORMAT_YANG_INSTANCES_CBOR: 142,
   msgId: Math.floor(Math.random() * 65536),
 
-  // Build CoAP frame
   buildFrame(method, path, payload = null) {
-    const frame = [];
-
-    // Header: Ver(2) + Type(2) + TKL(4) = 1 byte
-    // Ver=1, Type=CON(0), TKL=1
-    frame.push(0x41);
-
-    // Code
-    frame.push(method);
-
-    // Message ID (16-bit)
-    const msgId = this.msgId++ & 0xffff;
-    frame.push((msgId >> 8) & 0xff, msgId & 0xff);
-
-    // Token (1 byte)
-    frame.push(0x00);
-
-    // Options (must be in numeric order)
+    const frame = [0x41, method, (this.msgId >> 8) & 0xff, this.msgId++ & 0xff, 0x00];
     let lastOpt = 0;
-
-    // Option 11: Uri-Path
     for (const p of path.split('/').filter(x => x)) {
-      const delta = 11 - lastOpt;
-      frame.push((delta << 4) | p.length);
-      for (let i = 0; i < p.length; i++) {
-        frame.push(p.charCodeAt(i));
-      }
+      frame.push(((11 - lastOpt) << 4) | p.length);
+      for (let i = 0; i < p.length; i++) frame.push(p.charCodeAt(i));
       lastOpt = 11;
     }
-
-    // Option 12: Content-Format (for requests with payload)
-    if (payload) {
-      const delta = 12 - lastOpt;
-      frame.push((delta << 4) | 1);
-      frame.push(this.FORMAT_YANG_INSTANCES_CBOR);
-      lastOpt = 12;
-    }
-
-    // Option 23: Block2 (for response block-wise transfer)
-    const b2delta = 23 - lastOpt;
-    frame.push((b2delta << 4) | 1);
-    frame.push(0x04);  // num=0, m=0, szx=4 (256 bytes)
-
-    // Payload marker + payload
-    if (payload && payload.length > 0) {
-      frame.push(0xff);
-      frame.push(...payload);
-    }
-
+    if (payload) { frame.push(((12 - lastOpt) << 4) | 1, this.FORMAT_YANG_INSTANCES_CBOR); lastOpt = 12; }
+    frame.push(((23 - lastOpt) << 4) | 1, 0x04);
+    if (payload?.length > 0) { frame.push(0xff, ...payload); }
     return new Uint8Array(frame);
   },
 
-  // Parse CoAP response
   parseResponse(data) {
     if (data.length < 4) return null;
-
     const code = data[1];
-    const codeClass = (code >> 5) & 0x7;
-    const codeDetail = code & 0x1f;
-
-    // Extract payload if present
-    let payload = null;
-    let i = 4 + (data[0] & 0x0f); // Skip header + token
-
-    // Skip options
-    while (i < data.length && data[i] !== 0xff) {
-      const optByte = data[i++];
-      let delta = (optByte >> 4) & 0x0f;
-      let length = optByte & 0x0f;
-
-      if (delta === 13) delta = data[i++] + 13;
-      else if (delta === 14) { delta = ((data[i] << 8) | data[i+1]) + 269; i += 2; }
-
-      if (length === 13) length = data[i++] + 13;
-      else if (length === 14) { length = ((data[i] << 8) | data[i+1]) + 269; i += 2; }
-
-      i += length;
-    }
-
-    // Payload after 0xff marker
-    if (i < data.length && data[i] === 0xff) {
-      payload = data.slice(i + 1);
-    }
-
-    return {
-      codeClass,
-      codeDetail,
-      code: `${codeClass}.${codeDetail.toString().padStart(2, '0')}`,
-      payload
-    };
-  },
-
-  // Get response code description
-  getCodeDescription(codeClass, codeDetail) {
-    if (codeClass === 2) {
-      const success = { 1: 'Created', 4: 'Changed', 5: 'Content' };
-      return success[codeDetail] || 'Success';
-    }
-    if (codeClass === 4) {
-      const clientErr = {
-        0: 'Bad Request', 1: 'Unauthorized', 3: 'Forbidden',
-        4: 'Not Found', 5: 'Method Not Allowed', 15: 'Unsupported Content-Format'
-      };
-      return clientErr[codeDetail] || 'Client Error';
-    }
-    if (codeClass === 5) {
-      const serverErr = { 0: 'Internal Server Error', 1: 'Not Implemented' };
-      return serverErr[codeDetail] || 'Server Error';
-    }
-    return '';
+    return { codeClass: (code >> 5) & 0x7, codeDetail: code & 0x1f };
   }
 };
 
 // =====================================================================
-// CBOR Encoder/Decoder
+// CBOR Encoder
 // =====================================================================
 function encodeCBOR(value) {
   const result = [];
-
   function encodeInt(v) {
     if (v < 24) result.push(v);
     else if (v < 256) result.push(0x18, v);
     else if (v < 65536) result.push(0x19, (v >> 8) & 0xff, v & 0xff);
     else result.push(0x1a, (v >> 24) & 0xff, (v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff);
   }
-
   function encode(v) {
-    if (v === null || v === undefined) {
-      result.push(0xf6);
-      return;
-    }
-    if (typeof v === 'number' && Number.isInteger(v) && v >= 0) {
-      encodeInt(v);
-      return;
-    }
+    if (v === null || v === undefined) { result.push(0xf6); return; }
+    if (typeof v === 'number' && Number.isInteger(v) && v >= 0) { encodeInt(v); return; }
     if (typeof v === 'string') {
       const bytes = new TextEncoder().encode(v);
-      if (bytes.length < 24) result.push(0x60 | bytes.length);
-      else if (bytes.length < 256) result.push(0x78, bytes.length);
-      else result.push(0x79, (bytes.length >> 8) & 0xff, bytes.length & 0xff);
+      result.push(bytes.length < 24 ? 0x60 | bytes.length : 0x78, bytes.length);
       result.push(...bytes);
       return;
     }
-    if (Array.isArray(v)) {
-      if (v.length < 24) result.push(0x80 | v.length);
-      else result.push(0x98, v.length);
-      for (const item of v) encode(item);
-      return;
-    }
+    if (Array.isArray(v)) { result.push(0x80 | v.length); v.forEach(encode); return; }
     if (typeof v === 'object') {
       const keys = Object.keys(v).map(k => parseInt(k)).sort((a, b) => a - b);
-      if (keys.length < 24) result.push(0xa0 | keys.length);
-      else result.push(0xb8, keys.length);
-      for (const k of keys) {
-        encodeInt(k);
-        encode(v[k]);
-      }
-      return;
+      result.push(0xa0 | keys.length);
+      keys.forEach(k => { encodeInt(k); encode(v[k]); });
     }
   }
-
   encode(value);
   return result;
 }
 
-// Simple CBOR text decoder for error messages
-function decodeCBORText(data, offset) {
-  if (offset >= data.length) return { value: '', next: offset };
-  const byte = data[offset];
-  const major = byte >> 5;
-  const info = byte & 0x1f;
-
-  if (major === 3) { // Text string
-    let len = info;
-    let next = offset + 1;
-    if (info === 24) { len = data[next++]; }
-    else if (info === 25) { len = (data[next] << 8) | data[next + 1]; next += 2; }
-    const text = new TextDecoder().decode(data.slice(next, next + len));
-    return { value: text, next: next + len };
-  }
-  return { value: '', next: offset + 1 };
-}
-
-// =====================================================================
-// Build CBS iPATCH Payload
-// =====================================================================
 function buildCBSPayload(portName, trafficClass, idleSlope) {
-  /*
-   * iPATCH CBOR format: { IID => value }
-   *
-   * IID (Instance Identifier) = [SID, key1, key2, ...]
-   *   - SID: Schema Item iDentifier of target node
-   *   - keys: Keys of parent list nodes in path order
-   *
-   * For path: /interfaces/interface[name='X']/eth-qos/config/traffic-class-shapers
-   *   - Target: traffic-class-shapers (SID 8051)
-   *   - Parent list key: interface name = 'X'
-   *   - IID = [8051, 'X']
-   *
-   * Value = Array of list entries (since target is a list)
-   *   - Each entry uses delta-SID encoding
-   *   - Delta = child.SID - parent.SID
-   */
-
-  // Build IID: [SID, interface-name]
-  const iidBytes = [];
-  iidBytes.push(0x82);  // array(2)
-  // SID as uint16
-  iidBytes.push(0x19);
-  iidBytes.push((SID.TRAFFIC_CLASS_SHAPERS >> 8) & 0xff);
-  iidBytes.push(SID.TRAFFIC_CLASS_SHAPERS & 0xff);
-  // Interface name as text string
+  const iid = [0x82, 0x19, (SID.TRAFFIC_CLASS_SHAPERS >> 8) & 0xff, SID.TRAFFIC_CLASS_SHAPERS & 0xff];
   const nameBytes = new TextEncoder().encode(portName);
-  iidBytes.push(0x60 | nameBytes.length);
-  iidBytes.push(...nameBytes);
-
-  // Build value: array of list entries
-  // Entry: { 1: trafficClass, 2: { 1: idleSlope } }
-  const entry = {
-    [DELTA.TC]: trafficClass,    // traffic-class
-    [DELTA.CB]: {                // credit-based
-      [DELTA.IS]: idleSlope      //   idle-slope
-    }
-  };
-  const valueBytes = encodeCBOR([entry]);
-
-  // Combine into map: { IID => value }
-  const result = [];
-  result.push(0xa1);  // map(1)
-  result.push(...iidBytes);
-  result.push(...valueBytes);
-
-  return new Uint8Array(result);
+  iid.push(0x60 | nameBytes.length, ...nameBytes);
+  const entry = { [DELTA.TC]: trafficClass, [DELTA.CB]: { [DELTA.IS]: idleSlope } };
+  return new Uint8Array([0xa1, ...iid, ...encodeCBOR([entry])]);
 }
 
-// Build payload to clear CBS (set value to null)
 function buildCBSClearPayload(portName) {
-  const result = [];
-  result.push(0xa1);  // map(1)
-
-  // IID
-  result.push(0x82);  // array(2)
-  result.push(0x19, (SID.TRAFFIC_CLASS_SHAPERS >> 8) & 0xff, SID.TRAFFIC_CLASS_SHAPERS & 0xff);
+  const result = [0xa1, 0x82, 0x19, (SID.TRAFFIC_CLASS_SHAPERS >> 8) & 0xff, SID.TRAFFIC_CLASS_SHAPERS & 0xff];
   const nameBytes = new TextEncoder().encode(portName);
-  result.push(0x60 | nameBytes.length);
-  result.push(...nameBytes);
-
-  // Value = null (CBOR simple value 22)
-  result.push(0xf6);
-
+  result.push(0x60 | nameBytes.length, ...nameBytes, 0xf6);
   return new Uint8Array(result);
 }
 
 // =====================================================================
 // Application State
 // =====================================================================
-let port = null;
-let writer = null;
-let reader = null;
-let connected = false;
+let port = null, writer = null, reader = null, connected = false;
 let selectedPorts = new Set();
+let deviceInfo = { build: null, uptime: null };
 
 // =====================================================================
 // UI Functions
 // =====================================================================
-function initUI() {
+function showTab(tab) {
+  document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+  event.target.closest('.nav-item').classList.add('active');
+
+  document.getElementById('dashboardTab').style.display = tab === 'dashboard' ? 'block' : 'none';
+  document.getElementById('cbsTab').style.display = tab === 'cbs' ? 'block' : 'none';
+  document.getElementById('logsTab').style.display = tab === 'logs' ? 'block' : 'none';
+
+  const titles = { dashboard: 'Dashboard', cbs: 'CBS Configuration', logs: 'System Logs' };
+  document.getElementById('pageTitle').textContent = titles[tab] || 'Dashboard';
+}
+
+function initPortGrid() {
   const grid = document.getElementById('portGrid');
   for (let i = 1; i <= 12; i++) {
     const btn = document.createElement('button');
     btn.className = 'port-btn';
     btn.textContent = i;
-    btn.onclick = () => togglePort(i, btn);
+    btn.onclick = () => {
+      selectedPorts.has(i) ? selectedPorts.delete(i) : selectedPorts.add(i);
+      btn.classList.toggle('selected');
+    };
     grid.appendChild(btn);
   }
-
-  log('VelocityDRIVE-SP CBS Control initialized', 'info');
-  log('Protocol: Web Serial → MUP1 → CoAP → CBOR (CORECONF)', 'info');
-  log('Click "Connect Serial Port" to begin', 'info');
 }
 
-function togglePort(num, btn) {
-  if (selectedPorts.has(num)) {
-    selectedPorts.delete(num);
-    btn.classList.remove('selected');
-  } else {
-    selectedPorts.add(num);
-    btn.classList.add('selected');
-  }
-}
+function selectPorts(ports) { clearPorts(); document.querySelectorAll('.port-btn').forEach((btn, i) => { if (ports.includes(i + 1)) { selectedPorts.add(i + 1); btn.classList.add('selected'); } }); }
+function selectAllPorts() { selectPorts([1,2,3,4,5,6,7,8,9,10,11,12]); }
+function clearPorts() { selectedPorts.clear(); document.querySelectorAll('.port-btn').forEach(b => b.classList.remove('selected')); }
+function setIdleSlope(v) { document.getElementById('idleSlope').value = v; }
 
-function selectPorts(ports) {
-  clearPorts();
-  const btns = document.querySelectorAll('.port-btn');
-  ports.forEach(p => {
-    if (p >= 1 && p <= 12) {
-      selectedPorts.add(p);
-      btns[p-1].classList.add('selected');
-    }
+function log(msg, type = 'info') {
+  const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">${time}</span><span class="log-${type}">${msg}</span>`;
+
+  ['logContent', 'fullLogContent'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.appendChild(line.cloneNode(true)); el.parentElement.scrollTop = el.parentElement.scrollHeight; }
   });
 }
 
-function selectAllPorts() {
-  selectPorts([1,2,3,4,5,6,7,8,9,10,11,12]);
-}
-
-function clearPorts() {
-  selectedPorts.clear();
-  document.querySelectorAll('.port-btn').forEach(b => b.classList.remove('selected'));
-}
-
-function setIdleSlope(value) {
-  document.getElementById('idleSlope').value = value;
-}
-
-function log(msg, type = '') {
-  const area = document.getElementById('logArea');
-  const time = new Date().toLocaleTimeString('en-US', { hour12: false });
-  const line = document.createElement('div');
-  line.className = 'log-line ' + type;
-  line.textContent = `[${time}] ${msg}`;
-  area.appendChild(line);
-  area.scrollTop = area.scrollHeight;
-  while (area.children.length > 500) area.removeChild(area.firstChild);
-}
-
-function logHex(prefix, data, type = '') {
+function logHex(prefix, data, type = 'info') {
   const hex = Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ');
-  const truncated = hex.length > 90 ? hex.slice(0, 90) + '...' : hex;
-  log(`${prefix}: ${truncated} (${data.length} bytes)`, type);
+  log(`${prefix}: ${hex.slice(0, 60)}${hex.length > 60 ? '...' : ''} (${data.length}B)`, type);
 }
 
-function clearLog() {
-  document.getElementById('logArea').innerHTML = '';
-}
+function clearLog() { ['logContent', 'fullLogContent'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = ''; }); }
 
-function setConnected(state) {
+function updateStatus(state) {
   connected = state;
-  document.getElementById('statusDot').classList.toggle('connected', state);
-  document.getElementById('connectBtn').textContent = state ? 'Disconnect' : 'Connect Serial Port';
-  document.getElementById('applyBtn').disabled = !state;
-  document.getElementById('clearBtn').disabled = !state;
-  document.getElementById('refreshConfigBtn').disabled = !state;
-  document.getElementById('getPortsBtn').disabled = !state;
+  const banner = document.getElementById('statusBanner');
+  const badge = document.getElementById('statusBadge');
+  const title = document.getElementById('statusTitle');
+  const desc = document.getElementById('statusDesc');
+  const btn = document.getElementById('connectBtn');
+  const dot = document.getElementById('sidebarDot');
+  const devName = document.getElementById('deviceName');
 
-  const info = document.getElementById('deviceInfo');
-  if (state && port) {
-    const portInfo = port.getInfo();
-    info.innerHTML = `Connected<br>VID: 0x${(portInfo.usbVendorId || 0).toString(16).padStart(4, '0')} | PID: 0x${(portInfo.usbProductId || 0).toString(16).padStart(4, '0')}`;
-  } else {
-    info.innerHTML = 'Web Serial API required (Chrome 89+ / Edge 89+)<br>Open this file directly or via localhost';
-  }
+  banner.className = 'status-banner ' + (state ? 'connected' : '');
+  badge.className = 'status-badge ' + (state ? 'success' : 'idle');
+  badge.querySelector('span').textContent = state ? 'Connected' : 'Disconnected';
+  title.textContent = state ? 'System Operational' : 'Connect to Device';
+  desc.textContent = state
+    ? `Connected to VelocityDRIVE-SP. ${deviceInfo.build || ''} running for ${deviceInfo.uptime || '--'}s.`
+    : 'Click the connect button to establish a serial connection with your VelocityDRIVE-SP switch.';
+  btn.innerHTML = state
+    ? '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18"/><path d="M6 6l12 12"/></svg> Disconnect'
+    : '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="M12 5v14"/></svg> Connect';
+
+  dot.classList.toggle('connected', state);
+  devName.textContent = state ? 'LAN9662' : 'Not Connected';
+
+  document.getElementById('pingBtn').disabled = !state;
+  document.getElementById('applyBtn').disabled = !state;
+  document.getElementById('clearCbsBtn').disabled = !state;
+
+  document.getElementById('connMetric').textContent = state ? 'Online' : '--';
+  document.getElementById('connSub').textContent = state ? 'Serial connected' : 'Not connected';
 }
 
 // =====================================================================
 // Serial Communication
 // =====================================================================
-async function toggleConnection() {
-  if (connected) {
-    await disconnect();
-  } else {
-    await connect();
-  }
-}
+async function toggleConnection() { connected ? await disconnect() : await connect(); }
 
 async function connect() {
   try {
     log('Requesting serial port...', 'info');
     port = await navigator.serial.requestPort();
-
-    await port.open({
-      baudRate: 115200,
-      dataBits: 8,
-      stopBits: 1,
-      parity: 'none',
-      flowControl: 'none'
-    });
-
+    await port.open({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: 'none', flowControl: 'none' });
     writer = port.writable.getWriter();
     reader = port.readable.getReader();
-
-    setConnected(true);
-    log('Serial port opened successfully', 'success');
-
+    updateStatus(true);
+    log('Serial port connected', 'success');
     MUP1.reset();
     startReadLoop();
-
-    // Send initial ping
     setTimeout(sendPing, 500);
-
-  } catch (e) {
-    log(`Connection failed: ${e.message}`, 'error');
-  }
+  } catch (e) { log(`Connection failed: ${e.message}`, 'error'); }
 }
 
 async function disconnect() {
@@ -918,11 +1002,8 @@ async function disconnect() {
     if (writer) { writer.releaseLock(); }
     if (port) { await port.close().catch(() => {}); }
   } catch (e) {}
-
-  port = null;
-  writer = null;
-  reader = null;
-  setConnected(false);
+  port = null; writer = null; reader = null;
+  updateStatus(false);
   log('Disconnected', 'info');
 }
 
@@ -931,474 +1012,80 @@ async function startReadLoop() {
     while (connected) {
       const { value, done } = await reader.read();
       if (done) break;
-      if (value && value.length > 0) {
+      if (value?.length > 0) {
         logHex('RX', value, 'rx');
-
-        const frames = MUP1.parse(value);
-        for (const frame of frames) {
-          handleFrame(frame);
-        }
+        MUP1.parse(value).forEach(handleFrame);
       }
     }
-  } catch (e) {
-    if (connected) log(`Read error: ${e.message}`, 'error');
-  }
+  } catch (e) { if (connected) log(`Read error: ${e.message}`, 'error'); }
 }
 
 function handleFrame(frame) {
   if (frame.type === 'P') {
-    // Pong response
     const text = new TextDecoder().decode(frame.data);
     const parts = text.split(' ');
-    log(`PONG: Build=${parts[0] || 'N/A'}, Uptime=${parts[1] || 'N/A'}s`, 'success');
-  }
-  else if (frame.type === 'C') {
-    // CoAP response
+    deviceInfo.build = parts[0] || 'Unknown';
+    deviceInfo.uptime = parts[1] || '--';
+    log(`PONG: ${deviceInfo.build}, uptime=${deviceInfo.uptime}s`, 'success');
+
+    document.getElementById('fwMetric').textContent = deviceInfo.build.replace('VelocitySP-', '');
+    document.getElementById('fwSub').textContent = 'VelocityDRIVE-SP';
+    document.getElementById('uptimeMetric').textContent = deviceInfo.uptime + 's';
+    updateStatus(true);
+  } else if (frame.type === 'C') {
     const resp = CoAP.parseResponse(frame.data);
-    if (resp) {
-      const desc = CoAP.getCodeDescription(resp.codeClass, resp.codeDetail);
-
-      if (resp.codeClass === 2) {
-        log(`CoAP ${resp.code} ${desc}`, 'success');
-      } else {
-        log(`CoAP ${resp.code} ${desc}`, 'error');
-
-        // Try to extract error message from CBOR payload
-        if (resp.payload && resp.payload.length > 0) {
-          try {
-            // Look for text strings in the CBOR payload
-            for (let i = 0; i < resp.payload.length - 1; i++) {
-              const byte = resp.payload[i];
-              if ((byte & 0xe0) === 0x60) { // text string
-                const len = byte & 0x1f;
-                if (len > 0 && len < 100 && i + 1 + len <= resp.payload.length) {
-                  const text = new TextDecoder().decode(resp.payload.slice(i + 1, i + 1 + len));
-                  if (text.length > 3 && /^[a-zA-Z\s]+$/.test(text)) {
-                    log(`Error detail: ${text}`, 'error');
-                  }
-                }
-              }
-            }
-          } catch (e) {}
-        }
-      }
-    }
-  }
-  else if (frame.type === 'T') {
-    // Trace message
-    const text = new TextDecoder().decode(frame.data);
-    log(`TRACE: ${text}`, 'debug');
+    if (resp) log(`CoAP ${resp.codeClass}.${resp.codeDetail.toString().padStart(2,'0')} ${resp.codeClass === 2 ? 'OK' : 'Error'}`, resp.codeClass === 2 ? 'success' : 'error');
+  } else if (frame.type === 'T') {
+    log(`TRACE: ${new TextDecoder().decode(frame.data)}`, 'debug');
   }
 }
 
 async function send(data) {
-  if (!writer) {
-    log('Not connected', 'error');
-    return false;
-  }
-  try {
-    await writer.write(data);
-    logHex('TX', data, 'tx');
-    return true;
-  } catch (e) {
-    log(`Send error: ${e.message}`, 'error');
-    return false;
-  }
+  if (!writer) { log('Not connected', 'error'); return false; }
+  try { await writer.write(data); logHex('TX', data, 'tx'); return true; }
+  catch (e) { log(`Send error: ${e.message}`, 'error'); return false; }
 }
 
-async function sendPing() {
-  log('Sending ping...', 'info');
-  await send(MUP1.createPing());
-}
+async function sendPing() { log('Sending ping...', 'info'); await send(MUP1.createPing()); }
 
-// =====================================================================
-// CBS Operations
-// =====================================================================
 async function applyCBS() {
-  if (selectedPorts.size === 0) {
-    log('Please select at least one port', 'error');
-    return;
-  }
-
+  if (selectedPorts.size === 0) { log('Select ports first', 'error'); return; }
   const tc = parseInt(document.getElementById('trafficClass').value);
   const idleSlope = parseInt(document.getElementById('idleSlope').value);
   const ports = Array.from(selectedPorts).sort((a, b) => a - b);
+  log(`Applying CBS: ports=[${ports}], TC${tc}, ${idleSlope}kbps`, 'info');
 
-  log(`Applying CBS to ports [${ports.join(', ')}]: TC${tc}, idleSlope=${idleSlope} kbps`, 'info');
-
-  for (const portNum of ports) {
-    const payload = buildCBSPayload(String(portNum), tc, idleSlope);
-
-    // Debug: show CBOR payload
-    log(`Port ${portNum} CBOR: ${Array.from(payload).map(b => b.toString(16).padStart(2, '0')).join(' ')}`, 'debug');
-
-    const coap = CoAP.buildFrame(CoAP.CODE_IPATCH, 'c', payload);
-    const frame = MUP1.encode('c', coap);
-
-    await send(frame);
+  for (const p of ports) {
+    const payload = buildCBSPayload(String(p), tc, idleSlope);
+    log(`Port ${p} CBOR: ${Array.from(payload).map(b => b.toString(16).padStart(2,'0')).join(' ')}`, 'debug');
+    await send(MUP1.encode('c', CoAP.buildFrame(CoAP.CODE_IPATCH, 'c', payload)));
     await new Promise(r => setTimeout(r, 400));
   }
-
-  log('CBS configuration requests sent', 'success');
+  log('CBS configuration applied', 'success');
 }
 
 async function clearCBS() {
-  if (selectedPorts.size === 0) {
-    log('Please select ports to clear', 'error');
-    return;
-  }
-
+  if (selectedPorts.size === 0) { log('Select ports first', 'error'); return; }
   const ports = Array.from(selectedPorts).sort((a, b) => a - b);
-  log(`Clearing CBS on ports [${ports.join(', ')}]`, 'info');
+  log(`Clearing CBS: ports=[${ports}]`, 'info');
 
-  for (const portNum of ports) {
-    const payload = buildCBSClearPayload(String(portNum));
-    const coap = CoAP.buildFrame(CoAP.CODE_IPATCH, 'c', payload);
-    const frame = MUP1.encode('c', coap);
-
-    await send(frame);
+  for (const p of ports) {
+    await send(MUP1.encode('c', CoAP.buildFrame(CoAP.CODE_IPATCH, 'c', buildCBSClearPayload(String(p)))));
     await new Promise(r => setTimeout(r, 400));
   }
-
-  log('CBS clear requests sent', 'success');
+  log('CBS configuration cleared', 'success');
 }
 
 // =====================================================================
-// CBOR Decoder (for parsing response data)
-// =====================================================================
-function decodeCBOR(data, offset = 0) {
-  if (offset >= data.length) return { value: null, next: offset };
-
-  const byte = data[offset];
-  const major = byte >> 5;
-  const info = byte & 0x1f;
-  let next = offset + 1;
-
-  // Get additional info length
-  let addInfo = info;
-  if (info === 24) {
-    addInfo = data[next++];
-  } else if (info === 25) {
-    addInfo = (data[next] << 8) | data[next + 1];
-    next += 2;
-  } else if (info === 26) {
-    addInfo = (data[next] << 24) | (data[next+1] << 16) | (data[next+2] << 8) | data[next+3];
-    next += 4;
-  } else if (info === 27) {
-    // 64-bit, just read low 32 bits for simplicity
-    next += 4;
-    addInfo = (data[next] << 24) | (data[next+1] << 16) | (data[next+2] << 8) | data[next+3];
-    next += 4;
-  }
-
-  switch (major) {
-    case 0: // Unsigned integer
-      return { value: addInfo, next };
-    case 1: // Negative integer
-      return { value: -1 - addInfo, next };
-    case 2: // Byte string
-      return { value: data.slice(next, next + addInfo), next: next + addInfo };
-    case 3: // Text string
-      const text = new TextDecoder().decode(data.slice(next, next + addInfo));
-      return { value: text, next: next + addInfo };
-    case 4: // Array
-      const arr = [];
-      for (let i = 0; i < addInfo; i++) {
-        const item = decodeCBOR(data, next);
-        arr.push(item.value);
-        next = item.next;
-      }
-      return { value: arr, next };
-    case 5: // Map
-      const map = {};
-      for (let i = 0; i < addInfo; i++) {
-        const key = decodeCBOR(data, next);
-        next = key.next;
-        const val = decodeCBOR(data, next);
-        next = val.next;
-        map[key.value] = val.value;
-      }
-      return { value: map, next };
-    case 6: // Tag (skip tag number, decode content)
-      return decodeCBOR(data, next);
-    case 7: // Simple values
-      if (info === 20) return { value: false, next };
-      if (info === 21) return { value: true, next };
-      if (info === 22) return { value: null, next };
-      if (info === 23) return { value: undefined, next };
-      return { value: null, next };
-    default:
-      return { value: null, next };
-  }
-}
-
-// =====================================================================
-// Config Viewer Functions
-// =====================================================================
-let pendingResponse = null;
-let responseCallback = null;
-let responseBuffer = new Uint8Array(0);
-
-function showTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector(`.tab-btn[onclick="showTab('${tab}')"]`).classList.add('active');
-  document.getElementById('portsTab').style.display = tab === 'ports' ? 'block' : 'none';
-  document.getElementById('rawTab').style.display = tab === 'raw' ? 'block' : 'none';
-}
-
-function renderConfigTree(data, depth = 0) {
-  if (data === null || data === undefined) {
-    return '<span class="config-value">null</span>';
-  }
-  if (typeof data === 'boolean') {
-    return `<span class="config-value bool">${data}</span>`;
-  }
-  if (typeof data === 'number') {
-    return `<span class="config-value number">${data}</span>`;
-  }
-  if (typeof data === 'string') {
-    return `<span class="config-value string">"${data}"</span>`;
-  }
-  if (data instanceof Uint8Array) {
-    const hex = Array.from(data.slice(0, 16)).map(b => b.toString(16).padStart(2, '0')).join(' ');
-    return `<span class="config-value">[bytes: ${hex}${data.length > 16 ? '...' : ''}]</span>`;
-  }
-  if (Array.isArray(data)) {
-    if (data.length === 0) return '<span class="config-value">[]</span>';
-    let html = '<ul class="config-tree">';
-    data.forEach((item, idx) => {
-      html += `<li class="config-node"><span class="config-array-idx">[${idx}]</span> ${renderConfigTree(item, depth + 1)}</li>`;
-    });
-    html += '</ul>';
-    return html;
-  }
-  if (typeof data === 'object') {
-    const keys = Object.keys(data);
-    if (keys.length === 0) return '<span class="config-value">{}</span>';
-    let html = '<ul class="config-tree">';
-    for (const key of keys) {
-      const value = data[key];
-      const isComplex = typeof value === 'object' && value !== null;
-      if (isComplex) {
-        html += `<li class="config-node"><span class="config-toggle open" onclick="this.classList.toggle('open');this.nextElementSibling.style.display=this.classList.contains('open')?'block':'none'"><span class="config-key">${key}</span>:</span><div>${renderConfigTree(value, depth + 1)}</div></li>`;
-      } else {
-        html += `<li class="config-node"><span class="config-key">${key}</span>: ${renderConfigTree(value, depth + 1)}</li>`;
-      }
-    }
-    html += '</ul>';
-    return html;
-  }
-  return String(data);
-}
-
-// Enhanced frame handler with response collection
-const originalHandleFrame = handleFrame;
-function handleFrame(frame) {
-  originalHandleFrame(frame);
-
-  if (frame.type === 'C' && responseCallback) {
-    const resp = CoAP.parseResponse(frame.data);
-    if (resp && resp.codeClass === 2 && resp.payload) {
-      // Append payload to buffer
-      const newBuffer = new Uint8Array(responseBuffer.length + resp.payload.length);
-      newBuffer.set(responseBuffer);
-      newBuffer.set(resp.payload, responseBuffer.length);
-      responseBuffer = newBuffer;
-
-      // Check for block2 more flag (simplified - just wait for timeout or complete)
-      responseCallback(resp);
-    } else if (resp) {
-      responseCallback(resp);
-    }
-  }
-}
-
-async function sendAndWaitResponse(frame, timeout = 3000) {
-  return new Promise((resolve) => {
-    responseBuffer = new Uint8Array(0);
-    let resolved = false;
-
-    const timer = setTimeout(() => {
-      if (!resolved) {
-        resolved = true;
-        responseCallback = null;
-        resolve({ payload: responseBuffer, codeClass: 2 });
-      }
-    }, timeout);
-
-    responseCallback = (resp) => {
-      if (resp.codeClass !== 2) {
-        clearTimeout(timer);
-        resolved = true;
-        responseCallback = null;
-        resolve(resp);
-      }
-      // For success, let timeout collect all block-wise chunks
-    };
-
-    send(frame);
-  });
-}
-
-// Build CoAP GET frame with query parameters
-function buildGetFrame(path, query = '') {
-  const frame = [];
-  frame.push(0x41);  // Ver=1, Type=CON, TKL=1
-  frame.push(CoAP.CODE_GET);
-  const msgId = CoAP.msgId++ & 0xffff;
-  frame.push((msgId >> 8) & 0xff, msgId & 0xff);
-  frame.push(0x00);  // Token
-
-  let lastOpt = 0;
-
-  // Uri-Path
-  for (const p of path.split('/').filter(x => x)) {
-    const delta = 11 - lastOpt;
-    frame.push((delta << 4) | p.length);
-    for (let i = 0; i < p.length; i++) frame.push(p.charCodeAt(i));
-    lastOpt = 11;
-  }
-
-  // Uri-Query
-  if (query) {
-    for (const q of query.split('&')) {
-      const delta = 15 - lastOpt;
-      if (delta < 13) {
-        frame.push((delta << 4) | q.length);
-      } else {
-        frame.push(0xd0 | q.length);
-        frame.push(delta - 13);
-      }
-      for (let i = 0; i < q.length; i++) frame.push(q.charCodeAt(i));
-      lastOpt = 15;
-    }
-  }
-
-  // Block2
-  const b2delta = 23 - lastOpt;
-  if (b2delta < 13) {
-    frame.push((b2delta << 4) | 1);
-  } else {
-    frame.push(0xd1);
-    frame.push(b2delta - 13);
-  }
-  frame.push(0x04);  // szx=4 (256 bytes)
-
-  return new Uint8Array(frame);
-}
-
-// Build FETCH frame for specific paths
-function buildFetchFrame(paths) {
-  const frame = [];
-  frame.push(0x41);
-  frame.push(CoAP.CODE_FETCH);
-  const msgId = CoAP.msgId++ & 0xffff;
-  frame.push((msgId >> 8) & 0xff, msgId & 0xff);
-  frame.push(0x00);
-
-  let lastOpt = 0;
-
-  // Uri-Path: 'c'
-  frame.push(0xb1, 0x63);  // delta=11, len=1, 'c'
-  lastOpt = 11;
-
-  // Content-Format: 141 (yang-identifiers+cbor)
-  frame.push(0x11);  // delta=1, len=1
-  frame.push(141);
-  lastOpt = 12;
-
-  // Block2
-  frame.push((23 - lastOpt) << 4 | 1);
-  frame.push(0x04);
-
-  // Payload - CBOR array of SIDs
-  frame.push(0xff);
-  // Simple: encode array of SIDs
-  const cbor = encodeCBOR(paths);
-  frame.push(...cbor);
-
-  return new Uint8Array(frame);
-}
-
-async function refreshConfig() {
-  if (!connected) return;
-
-  const status = document.getElementById('configStatus');
-  status.innerHTML = '<span class="loading">Loading configuration...</span>';
-  log('Fetching device configuration...', 'info');
-
-  try {
-    // GET c?c=c (get running config)
-    const getFrame = buildGetFrame('c', 'c=c');
-    const mup1Frame = MUP1.encode('c', getFrame);
-
-    const resp = await sendAndWaitResponse(mup1Frame, 5000);
-
-    if (resp.payload && resp.payload.length > 0) {
-      try {
-        const decoded = decodeCBOR(resp.payload);
-        const viewer = document.getElementById('configViewer');
-        viewer.innerHTML = renderConfigTree(decoded.value);
-        status.textContent = `Loaded ${resp.payload.length} bytes at ${new Date().toLocaleTimeString()}`;
-        log(`Config loaded: ${resp.payload.length} bytes`, 'success');
-      } catch (e) {
-        status.textContent = 'Failed to parse CBOR response';
-        log(`CBOR parse error: ${e.message}`, 'error');
-      }
-    } else {
-      status.textContent = 'No data received';
-    }
-  } catch (e) {
-    status.textContent = `Error: ${e.message}`;
-    log(`Config fetch error: ${e.message}`, 'error');
-  }
-}
-
-async function getPortStatus() {
-  if (!connected) return;
-
-  const status = document.getElementById('configStatus');
-  status.innerHTML = '<span class="loading">Fetching port status...</span>';
-  log('Fetching port CBS status...', 'info');
-
-  const grid = document.getElementById('portStatusGrid');
-  grid.innerHTML = '';
-
-  // Fetch each port's CBS config
-  for (let p = 1; p <= 12; p++) {
-    const card = document.createElement('div');
-    card.className = 'port-status-card';
-    card.innerHTML = `<div class="port-name">Port ${p}</div><div class="no-cbs">Loading...</div>`;
-    grid.appendChild(card);
-  }
-
-  // For now, show placeholder - actual FETCH would require proper SID handling
-  // which needs the YANG schema from device
-  setTimeout(() => {
-    const cards = grid.querySelectorAll('.port-status-card');
-    cards.forEach((card, idx) => {
-      const portNum = idx + 1;
-      card.innerHTML = `
-        <div class="port-name">Port ${portNum}</div>
-        <div class="no-cbs">Click port to select, then use CBS panel to configure</div>
-      `;
-    });
-    status.textContent = 'Port status loaded (CBS config requires FETCH with YANG schema)';
-    log('Port status display ready', 'info');
-  }, 500);
-}
-
-// =====================================================================
-// Initialization
+// Init
 // =====================================================================
 if (!('serial' in navigator)) {
   document.getElementById('connectBtn').disabled = true;
-  document.getElementById('deviceInfo').innerHTML =
-    '<span style="color:#ff6b6b">Web Serial API not supported!</span><br>' +
-    'Please use Chrome 89+ or Edge 89+';
+  log('Web Serial API not supported. Use Chrome 89+ or Edge 89+.', 'error');
 }
-
-initUI();
+initPortGrid();
+log('VelocityDRIVE-SP Manager initialized', 'info');
+log('Protocol: Web Serial → MUP1 → CoAP → CBOR (CORECONF)', 'info');
 </script>
 </body>
 </html>
