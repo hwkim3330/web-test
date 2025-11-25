@@ -3,373 +3,553 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CBS Control - Credit Based Shaper (Web Serial)</title>
+  <title>CBS Control - VelocityDRIVE-SP</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', sans-serif;
-      background: #f5f5f7;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
       min-height: 100vh;
-      color: #1d1d1f;
+      color: #fff;
       padding: 20px;
     }
-    .header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 20px;
-      max-width: 1200px;
-      margin-left: auto;
-      margin-right: auto;
-    }
-    h1 { font-size: 1.5rem; font-weight: 600; }
-    .back-btn {
-      padding: 8px 16px;
-      background: #fff;
-      color: #0071e3;
-      text-decoration: none;
-      border-radius: 980px;
-      font-size: 0.85rem;
-      border: 1px solid #d2d2d7;
-    }
-    .main-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      max-width: 1200px;
+    .container {
+      max-width: 900px;
       margin: 0 auto;
     }
-    @media (max-width: 900px) {
-      .main-grid { grid-template-columns: 1fr; }
+    h1 {
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 1.8rem;
+      color: #00d4ff;
     }
     .panel {
-      background: #fff;
+      background: rgba(255,255,255,0.05);
       border-radius: 16px;
-      padding: 20px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      padding: 24px;
+      margin-bottom: 20px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.1);
     }
     .panel h2 {
-      font-size: 0.9rem;
-      font-weight: 600;
-      margin-bottom: 16px;
-      color: #1d1d1f;
-    }
-    .status-bar {
-      padding: 10px 14px;
-      border-radius: 10px;
-      font-size: 0.85rem;
+      font-size: 1rem;
+      color: #00d4ff;
       margin-bottom: 16px;
       display: flex;
       align-items: center;
       gap: 8px;
     }
-    .status-bar.connected { background: rgba(52,199,89,0.1); color: #34c759; }
-    .status-bar.disconnected { background: rgba(255,59,48,0.1); color: #ff3b30; }
-    .status-bar.loading { background: rgba(0,113,227,0.1); color: #0071e3; }
-    .status-dot {
-      width: 8px;
-      height: 8px;
+    .status-indicator {
+      width: 10px;
+      height: 10px;
       border-radius: 50%;
-      background: currentColor;
+      background: #ff4757;
+      animation: pulse 2s infinite;
+    }
+    .status-indicator.connected {
+      background: #2ed573;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #00d4ff 0%, #0099cc 100%);
+      color: #1a1a2e;
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(0,212,255,0.4); }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-danger {
+      background: linear-gradient(135deg, #ff4757 0%, #cc0000 100%);
+      color: #fff;
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.2);
     }
     .form-group {
       margin-bottom: 16px;
     }
     .form-group label {
       display: block;
-      font-size: 0.8rem;
-      color: #86868b;
+      font-size: 0.85rem;
+      color: #a0a0a0;
       margin-bottom: 6px;
     }
-    .form-row {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
     select, input[type="number"] {
-      padding: 10px 14px;
-      font-size: 0.9rem;
-      border: 1px solid #d2d2d7;
-      border-radius: 10px;
-      background: #fff;
-      font-family: inherit;
-      flex: 1;
+      width: 100%;
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      background: rgba(0,0,0,0.3);
+      color: #fff;
+      font-size: 1rem;
     }
     select:focus, input:focus {
       outline: none;
-      border-color: #0071e3;
+      border-color: #00d4ff;
     }
-    .port-checkboxes {
+    .port-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(6, 1fr);
       gap: 8px;
-    }
-    .port-check {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 12px;
-      background: #f5f5f7;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: all 0.2s;
-      border: 2px solid transparent;
-    }
-    .port-check:hover { background: #e8e8ed; }
-    .port-check.selected {
-      background: rgba(0,113,227,0.1);
-      border-color: #0071e3;
-      color: #0071e3;
-    }
-    .port-check input { display: none; }
-    .port-check span { font-weight: 600; font-size: 0.9rem; }
-    button {
-      padding: 12px 24px;
-      font-size: 0.9rem;
-      border: none;
-      border-radius: 980px;
-      cursor: pointer;
-      font-weight: 500;
-      font-family: inherit;
-      transition: all 0.2s;
-    }
-    .connect-btn {
-      background: #0071e3;
-      color: white;
       margin-bottom: 16px;
     }
-    .connect-btn:hover { background: #0077ed; }
-    .connect-btn.connected { background: #34c759; }
-    .apply-btn {
-      background: #0071e3;
-      color: white;
-      width: 100%;
-    }
-    .apply-btn:hover { background: #0077ed; }
-    .apply-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-    .clear-btn {
-      background: #ff3b30;
-      color: white;
-      width: 100%;
-      margin-top: 10px;
-    }
-    .clear-btn:hover { background: #ff453a; }
-    .config-list {
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    .config-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 12px;
-      background: #f5f5f7;
-      border-radius: 10px;
-      margin-bottom: 8px;
-    }
-    .config-info {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .config-port { font-weight: 600; color: #1d1d1f; }
-    .config-details { font-size: 0.75rem; color: #86868b; }
-    .delete-btn {
-      padding: 6px 12px;
-      background: rgba(255,59,48,0.1);
-      color: #ff3b30;
-      border: none;
-      border-radius: 6px;
-      font-size: 0.75rem;
+    .port-btn {
+      padding: 12px 8px;
+      background: rgba(255,255,255,0.05);
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      color: #fff;
       cursor: pointer;
-    }
-    .delete-btn:hover { background: rgba(255,59,48,0.2); }
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-      color: #86868b;
-    }
-    .refresh-btn {
-      padding: 8px 16px;
-      background: #f5f5f7;
-      color: #1d1d1f;
-      border: 1px solid #d2d2d7;
-      margin-left: auto;
-    }
-    .refresh-btn:hover { background: #e8e8ed; }
-    .log-area {
-      background: #1d1d1f;
-      color: #34c759;
-      font-family: 'SF Mono', Monaco, monospace;
-      font-size: 0.75rem;
-      padding: 12px;
-      border-radius: 10px;
-      height: 200px;
-      overflow-y: auto;
-      margin-top: 16px;
-    }
-    .log-line { margin-bottom: 4px; }
-    .log-line.error { color: #ff3b30; }
-    .log-line.success { color: #34c759; }
-    .log-line.info { color: #0071e3; }
-    .log-line.tx { color: #ffd60a; }
-    .log-line.rx { color: #30d158; }
-    .badge {
-      display: inline-block;
-      padding: 3px 8px;
-      background: rgba(0,113,227,0.1);
-      color: #0071e3;
-      border-radius: 6px;
-      font-size: 0.7rem;
       font-weight: 600;
-      margin-left: 8px;
+      transition: all 0.2s;
     }
-    .quick-presets {
+    .port-btn:hover { border-color: #00d4ff; }
+    .port-btn.selected {
+      background: rgba(0,212,255,0.2);
+      border-color: #00d4ff;
+      color: #00d4ff;
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    .presets {
       display: flex;
       gap: 8px;
-      margin-bottom: 16px;
       flex-wrap: wrap;
+      margin-bottom: 16px;
     }
     .preset-btn {
-      padding: 8px 14px;
-      background: #f5f5f7;
-      color: #1d1d1f;
-      border: 1px solid #d2d2d7;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
       font-size: 0.8rem;
     }
-    .preset-btn:hover {
-      background: #e8e8ed;
-      border-color: #0071e3;
+    .preset-btn:hover { background: rgba(255,255,255,0.2); }
+    .log-area {
+      background: #0d1117;
+      border-radius: 8px;
+      padding: 12px;
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 0.75rem;
+      height: 200px;
+      overflow-y: auto;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .log-line { margin-bottom: 4px; opacity: 0.8; }
+    .log-line.error { color: #ff4757; }
+    .log-line.success { color: #2ed573; }
+    .log-line.info { color: #00d4ff; }
+    .log-line.tx { color: #ffa502; }
+    .log-line.rx { color: #7bed9f; }
+    .action-row {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .action-row .btn { flex: 1; }
+    .info-text {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 8px;
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>CBS Control <span class="badge">Web Serial</span></h1>
-    <a href="index.html" class="back-btn">Back to Main</a>
-  </div>
+  <div class="container">
+    <h1>CBS Control</h1>
 
-  <div class="main-grid">
     <div class="panel">
-      <button class="connect-btn" id="connectBtn" onclick="toggleConnection()">Connect Serial Port</button>
+      <h2><span class="status-indicator" id="statusDot"></span> Connection</h2>
+      <button class="btn btn-primary" id="connectBtn" onclick="toggleConnection()">
+        Connect Serial Port
+      </button>
+      <p class="info-text" id="deviceInfo">Web Serial API - Chrome/Edge required</p>
+    </div>
 
-      <div id="statusBar" class="status-bar disconnected">
-        <div class="status-dot"></div>
-        <span id="statusText">Disconnected</span>
+    <div class="panel">
+      <h2>Port Selection</h2>
+      <div class="port-grid" id="portGrid"></div>
+      <div class="presets">
+        <button class="preset-btn" onclick="selectPorts([1,2,3,4])">Ports 1-4</button>
+        <button class="preset-btn" onclick="selectPorts([5,6,7,8])">Ports 5-8</button>
+        <button class="preset-btn" onclick="selectPorts([9,10,11,12])">Ports 9-12</button>
+        <button class="preset-btn" onclick="selectAllPorts()">All Ports</button>
+        <button class="preset-btn" onclick="clearPorts()">Clear</button>
       </div>
+    </div>
 
-      <h2>Quick Presets</h2>
-      <div class="quick-presets">
-        <button class="preset-btn" onclick="applyPreset([8,9,10,11], 0, 100000)">Ports 8-11, TC0, 100Mbps</button>
-        <button class="preset-btn" onclick="applyPreset([1,2,3,4], 7, 50000)">Ports 1-4, TC7, 50Mbps</button>
-      </div>
-
-      <h2>Configure CBS</h2>
-      <div class="form-group">
-        <label>Select Ports</label>
-        <div class="port-checkboxes" id="portCheckboxes"></div>
-      </div>
-
+    <div class="panel">
+      <h2>CBS Configuration</h2>
       <div class="form-row">
-        <div class="form-group" style="flex:1">
+        <div class="form-group">
           <label>Traffic Class (0-7)</label>
           <select id="trafficClass">
-            <option value="0">TC 0 (Lowest)</option>
-            <option value="1">TC 1</option>
-            <option value="2">TC 2</option>
-            <option value="3">TC 3</option>
-            <option value="4">TC 4</option>
-            <option value="5">TC 5</option>
+            <option value="7">TC 7 (Highest Priority)</option>
             <option value="6">TC 6</option>
-            <option value="7" selected>TC 7 (Highest)</option>
+            <option value="5">TC 5</option>
+            <option value="4">TC 4</option>
+            <option value="3">TC 3</option>
+            <option value="2">TC 2</option>
+            <option value="1">TC 1</option>
+            <option value="0">TC 0 (Best Effort)</option>
           </select>
         </div>
-        <div class="form-group" style="flex:1">
+        <div class="form-group">
           <label>Idle Slope (kbps)</label>
           <input type="number" id="idleSlope" value="100000" min="0" max="1000000" step="1000">
         </div>
       </div>
-
-      <div class="form-group">
-        <label>Idle Slope Presets</label>
-        <div class="form-row">
-          <button class="preset-btn" onclick="document.getElementById('idleSlope').value=10000">10 Mbps</button>
-          <button class="preset-btn" onclick="document.getElementById('idleSlope').value=50000">50 Mbps</button>
-          <button class="preset-btn" onclick="document.getElementById('idleSlope').value=100000">100 Mbps</button>
-          <button class="preset-btn" onclick="document.getElementById('idleSlope').value=500000">500 Mbps</button>
-        </div>
+      <div class="presets">
+        <button class="preset-btn" onclick="setIdleSlope(10000)">10 Mbps</button>
+        <button class="preset-btn" onclick="setIdleSlope(50000)">50 Mbps</button>
+        <button class="preset-btn" onclick="setIdleSlope(100000)">100 Mbps</button>
+        <button class="preset-btn" onclick="setIdleSlope(250000)">250 Mbps</button>
+        <button class="preset-btn" onclick="setIdleSlope(500000)">500 Mbps</button>
       </div>
-
-      <button class="apply-btn" id="applyBtn" onclick="applyCBS()" disabled>Apply CBS</button>
-      <button class="clear-btn" id="clearBtn" onclick="clearSelectedCBS()" disabled>Clear Selected Ports CBS</button>
-
-      <div class="log-area" id="logArea">
-        <div class="log-line info">> CBS Control (Web Serial) Ready</div>
-        <div class="log-line info">> Click "Connect Serial Port" to begin</div>
+      <div class="action-row">
+        <button class="btn btn-primary" id="applyBtn" onclick="applyCBS()" disabled>Apply CBS</button>
+        <button class="btn btn-danger" id="clearBtn" onclick="clearCBS()" disabled>Clear CBS</button>
       </div>
     </div>
 
     <div class="panel">
-      <div style="display:flex;align-items:center;margin-bottom:16px;">
-        <h2 style="margin-bottom:0">Current CBS Config</h2>
-        <button class="refresh-btn" id="refreshBtn" onclick="refreshConfig()" disabled>Refresh</button>
-      </div>
-      <div class="config-list" id="configList">
-        <div class="empty-state">
-          <p>Connect to device to view configuration</p>
-        </div>
-      </div>
+      <h2>Log</h2>
+      <div class="log-area" id="logArea"></div>
+      <button class="btn btn-secondary" onclick="clearLog()" style="margin-top:12px">Clear Log</button>
     </div>
   </div>
 
-  <script src="mup1-protocol.js"></script>
-  <script src="coap-protocol.js"></script>
   <script>
-    // CBS Control Application with Web Serial
-    let port = null;
-    let reader = null;
-    let writer = null;
-    let readLoopRunning = false;
-    let selectedPorts = new Set();
-    let currentConfig = [];
-    let responseBuffer = [];
-    let pendingRequest = null;
-    let block2Num = 0;
+    // ============================================
+    // YANG SID Definitions (from mchp-velocitysp-port SID file)
+    // ============================================
+    const SID = {
+      TRAFFIC_CLASS_SHAPERS: 8051,  // /interfaces/interface/eth-qos/config/traffic-class-shapers
+      TRAFFIC_CLASS: 8052,          // traffic-class (key leaf)
+      CREDIT_BASED: 8053,           // credit-based container
+      IDLE_SLOPE: 8054,             // idle-slope leaf
+    };
 
-    // Initialize port checkboxes
-    function initPorts() {
-      const container = document.getElementById('portCheckboxes');
-      container.innerHTML = '';
-      for (let i = 1; i <= 12; i++) {
-        const div = document.createElement('div');
-        div.className = 'port-check';
-        div.innerHTML = `<input type="checkbox" id="port${i}" value="${i}"><span>Port ${i}</span>`;
-        div.onclick = () => togglePort(i, div);
-        container.appendChild(div);
+    // ============================================
+    // MUP1 Protocol (Microchip UART Protocol 1)
+    // ============================================
+    const MUP1 = {
+      SOF: 0x3e,  // '>'
+      EOF: 0x3c,  // '<'
+      ESC: 0x5c,  // '\'
+
+      calcChecksum(data) {
+        let sum = 0;
+        for (const b of data) sum += b;
+        const checksum = (~sum) & 0xffff;
+        return checksum.toString(16).padStart(4, '0').toUpperCase();
+      },
+
+      encode(type, payload) {
+        const frame = [this.SOF, type.charCodeAt(0)];
+        for (const b of payload) {
+          if (b === this.SOF || b === this.EOF || b === this.ESC) {
+            frame.push(this.ESC, b);
+          } else {
+            frame.push(b);
+          }
+        }
+        frame.push(this.EOF);
+        if ((frame.length - 1) % 2 === 0) frame.push(this.EOF);
+        const checksumData = frame.slice(1, -1);
+        if (frame[frame.length-1] === this.EOF && frame[frame.length-2] === this.EOF) {
+          checksumData.pop();
+        }
+        const checksum = this.calcChecksum(checksumData);
+        for (const c of checksum) frame.push(c.charCodeAt(0));
+        return new Uint8Array(frame);
+      },
+
+      createPing() {
+        return this.encode('p', []);
+      },
+
+      // Parser state machine
+      state: 'IDLE',
+      buffer: [],
+
+      reset() {
+        this.state = 'IDLE';
+        this.buffer = [];
+      },
+
+      parse(bytes) {
+        const frames = [];
+        for (const b of bytes) {
+          switch (this.state) {
+            case 'IDLE':
+              if (b === this.SOF) {
+                this.buffer = [];
+                this.state = 'DATA';
+              }
+              break;
+            case 'DATA':
+              if (b === this.ESC) {
+                this.state = 'ESCAPE';
+              } else if (b === this.EOF) {
+                this.state = 'EOF1';
+              } else {
+                this.buffer.push(b);
+              }
+              break;
+            case 'ESCAPE':
+              this.buffer.push(b);
+              this.state = 'DATA';
+              break;
+            case 'EOF1':
+              if (b === this.EOF) {
+                this.state = 'CHECKSUM';
+              } else if ((b >= 0x30 && b <= 0x39) || (b >= 0x41 && b <= 0x46) || (b >= 0x61 && b <= 0x66)) {
+                this.state = 'CHECKSUM';
+                this.buffer.push(b);
+              } else {
+                this.state = 'IDLE';
+              }
+              break;
+            case 'CHECKSUM':
+              this.buffer.push(b);
+              if (this.buffer.length >= 4) {
+                const typeChar = String.fromCharCode(this.buffer[0]);
+                const data = new Uint8Array(this.buffer.slice(1, -4));
+                frames.push({ type: typeChar, data });
+                this.state = 'IDLE';
+                this.buffer = [];
+              }
+              break;
+          }
+        }
+        return frames;
       }
+    };
+
+    // ============================================
+    // CoAP Protocol
+    // ============================================
+    const CoAP = {
+      CODE_GET: 1,
+      CODE_IPATCH: 7,
+      TYPE_CON: 0,
+      FORMAT_YANG_INSTANCES_CBOR: 142,
+      msgId: Math.floor(Math.random() * 65536),
+
+      buildFrame(method, path, payload = null) {
+        const frame = [];
+        // Header
+        frame.push(0x41);  // Ver=1, Type=CON, TKL=1
+        frame.push(method);
+        frame.push((this.msgId >> 8) & 0xff, this.msgId++ & 0xffff);
+        frame.push(0x00);  // Token
+
+        // Options
+        let lastOpt = 0;
+        // URI-Path (11)
+        for (const p of path.split('/').filter(x => x)) {
+          const delta = 11 - lastOpt;
+          frame.push((delta << 4) | p.length);
+          for (const c of p) frame.push(c.charCodeAt(0));
+          lastOpt = 11;
+        }
+        // Content-Format (12)
+        if (payload) {
+          frame.push(0x11, this.FORMAT_YANG_INSTANCES_CBOR);
+          lastOpt = 12;
+        }
+        // Block2 (23)
+        const b2delta = 23 - lastOpt;
+        frame.push((b2delta << 4) | 1, 0x04);  // num=0, m=0, szx=4 (256 bytes)
+
+        // Payload
+        if (payload) {
+          frame.push(0xff);
+          frame.push(...payload);
+        }
+
+        return new Uint8Array(frame);
+      },
+
+      parseResponse(data) {
+        if (data.length < 4) return null;
+        const code = data[1];
+        const codeClass = (code >> 5) & 0x7;
+        const codeDetail = code & 0x1f;
+        return { codeClass, codeDetail, code: `${codeClass}.${codeDetail.toString().padStart(2,'0')}` };
+      }
+    };
+
+    // ============================================
+    // CBOR Encoder (minimal)
+    // ============================================
+    function encodeCBOR(value) {
+      const result = [];
+
+      function encode(v) {
+        if (v === null) { result.push(0xf6); return; }
+        if (typeof v === 'number' && Number.isInteger(v)) {
+          if (v >= 0) {
+            if (v < 24) result.push(v);
+            else if (v < 256) result.push(0x18, v);
+            else if (v < 65536) result.push(0x19, v >> 8, v & 0xff);
+            else result.push(0x1a, (v >> 24) & 0xff, (v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff);
+          }
+          return;
+        }
+        if (typeof v === 'string') {
+          const bytes = new TextEncoder().encode(v);
+          if (bytes.length < 24) result.push(0x60 | bytes.length);
+          else result.push(0x78, bytes.length);
+          result.push(...bytes);
+          return;
+        }
+        if (Array.isArray(v)) {
+          if (v.length < 24) result.push(0x80 | v.length);
+          else result.push(0x98, v.length);
+          for (const item of v) encode(item);
+          return;
+        }
+        if (typeof v === 'object') {
+          const keys = Object.keys(v);
+          if (keys.length < 24) result.push(0xa0 | keys.length);
+          else result.push(0xb8, keys.length);
+          for (const k of keys) {
+            const numKey = parseInt(k);
+            encode(isNaN(numKey) ? k : numKey);
+            encode(v[k]);
+          }
+          return;
+        }
+      }
+
+      encode(value);
+      return new Uint8Array(result);
     }
 
-    function togglePort(port, el) {
-      if (selectedPorts.has(port)) {
-        selectedPorts.delete(port);
-        el.classList.remove('selected');
+    // ============================================
+    // Build CBS iPATCH Payload
+    // ============================================
+    function buildCBSPayload(portName, trafficClass, idleSlope) {
+      // iPATCH format: { IID => value }
+      // IID = [SID, key1, key2, ...] - SID of target list + parent list keys
+      // For traffic-class-shapers: IID = [8051, portName]
+      //   - 8051 = SID of traffic-class-shapers
+      //   - portName = key of parent /interfaces/interface list
+      // Value = array of list entries with delta-SID encoded fields
+
+      // Build IID: [SID, interface-name-key]
+      const iid = [SID.TRAFFIC_CLASS_SHAPERS, portName];
+
+      // Build value: array of shaper entries
+      // Each entry has delta-SID encoded fields:
+      //   traffic-class: delta = 8052 - 8051 = 1
+      //   credit-based: delta = 8053 - 8051 = 2
+      //     idle-slope: delta = 8054 - 8053 = 1
+      const deltaTc = SID.TRAFFIC_CLASS - SID.TRAFFIC_CLASS_SHAPERS;  // 1
+      const deltaCb = SID.CREDIT_BASED - SID.TRAFFIC_CLASS_SHAPERS;   // 2
+      const deltaIs = SID.IDLE_SLOPE - SID.CREDIT_BASED;              // 1
+
+      const value = [{
+        [deltaTc]: trafficClass,
+        [deltaCb]: {
+          [deltaIs]: idleSlope
+        }
+      }];
+
+      // Encode as CBOR map: { array => value }
+      const result = [];
+      result.push(0xa1);  // map(1)
+
+      // Encode IID (array)
+      result.push(0x82);  // array(2)
+      result.push(0x19, (SID.TRAFFIC_CLASS_SHAPERS >> 8) & 0xff, SID.TRAFFIC_CLASS_SHAPERS & 0xff);  // uint16
+      const nameBytes = new TextEncoder().encode(portName);
+      result.push(0x60 | nameBytes.length);  // text string
+      result.push(...nameBytes);
+
+      // Encode value (array of maps)
+      const valueBytes = encodeCBOR(value);
+      result.push(...valueBytes);
+
+      return new Uint8Array(result);
+    }
+
+    // ============================================
+    // Application State
+    // ============================================
+    let port = null;
+    let writer = null;
+    let reader = null;
+    let selectedPorts = new Set();
+    let connected = false;
+
+    // ============================================
+    // UI Functions
+    // ============================================
+    function initUI() {
+      const grid = document.getElementById('portGrid');
+      for (let i = 1; i <= 12; i++) {
+        const btn = document.createElement('button');
+        btn.className = 'port-btn';
+        btn.textContent = `Port ${i}`;
+        btn.onclick = () => togglePort(i, btn);
+        grid.appendChild(btn);
+      }
+      log('CBS Control initialized', 'info');
+      log('Click "Connect Serial Port" to begin', 'info');
+    }
+
+    function togglePort(num, btn) {
+      if (selectedPorts.has(num)) {
+        selectedPorts.delete(num);
+        btn.classList.remove('selected');
       } else {
-        selectedPorts.add(port);
-        el.classList.add('selected');
+        selectedPorts.add(num);
+        btn.classList.add('selected');
       }
     }
 
     function selectPorts(ports) {
-      selectedPorts.clear();
-      document.querySelectorAll('.port-check').forEach((el, idx) => {
-        const port = idx + 1;
-        if (ports.includes(port)) {
-          selectedPorts.add(port);
-          el.classList.add('selected');
-        } else {
-          el.classList.remove('selected');
+      clearPorts();
+      const btns = document.querySelectorAll('.port-btn');
+      ports.forEach(p => {
+        if (p >= 1 && p <= 12) {
+          selectedPorts.add(p);
+          btns[p-1].classList.add('selected');
         }
       });
+    }
+
+    function selectAllPorts() {
+      selectPorts([1,2,3,4,5,6,7,8,9,10,11,12]);
+    }
+
+    function clearPorts() {
+      selectedPorts.clear();
+      document.querySelectorAll('.port-btn').forEach(b => b.classList.remove('selected'));
+    }
+
+    function setIdleSlope(value) {
+      document.getElementById('idleSlope').value = value;
     }
 
     function log(msg, type = '') {
@@ -380,28 +560,27 @@
       line.textContent = `[${time}] ${msg}`;
       area.appendChild(line);
       area.scrollTop = area.scrollHeight;
-      // Keep only last 100 lines
-      while (area.children.length > 100) {
-        area.removeChild(area.firstChild);
-      }
+      while (area.children.length > 200) area.removeChild(area.firstChild);
     }
 
-    function setStatus(status, text) {
-      const bar = document.getElementById('statusBar');
-      const statusText = document.getElementById('statusText');
-      bar.className = 'status-bar ' + status;
-      statusText.textContent = text;
+    function clearLog() {
+      document.getElementById('logArea').innerHTML = '';
     }
 
-    function setButtonsEnabled(enabled) {
-      document.getElementById('applyBtn').disabled = !enabled;
-      document.getElementById('clearBtn').disabled = !enabled;
-      document.getElementById('refreshBtn').disabled = !enabled;
+    function setConnected(state) {
+      connected = state;
+      document.getElementById('statusDot').classList.toggle('connected', state);
+      document.getElementById('connectBtn').textContent = state ? 'Disconnect' : 'Connect Serial Port';
+      document.getElementById('applyBtn').disabled = !state;
+      document.getElementById('clearBtn').disabled = !state;
+      document.getElementById('deviceInfo').textContent = state ? 'Connected' : 'Web Serial API - Chrome/Edge required';
     }
 
-    // Web Serial Connection
+    // ============================================
+    // Serial Communication
+    // ============================================
     async function toggleConnection() {
-      if (port) {
+      if (connected) {
         await disconnect();
       } else {
         await connect();
@@ -410,440 +589,94 @@
 
     async function connect() {
       try {
-        setStatus('loading', 'Connecting...');
         log('Requesting serial port...', 'info');
-
         port = await navigator.serial.requestPort();
-        await port.open({
-          baudRate: 115200,
-          dataBits: 8,
-          stopBits: 1,
-          parity: 'none',
-          flowControl: 'none'
-        });
+        await port.open({ baudRate: 115200, dataBits: 8, stopBits: 1, parity: 'none' });
 
         writer = port.writable.getWriter();
-        startReadLoop();
+        reader = port.readable.getReader();
 
-        setStatus('connected', 'Connected');
-        document.getElementById('connectBtn').textContent = 'Disconnect';
-        document.getElementById('connectBtn').classList.add('connected');
-        setButtonsEnabled(true);
-
-        const info = port.getInfo();
-        log(`Connected! VID: ${info.usbVendorId?.toString(16) || 'N/A'}, PID: ${info.usbProductId?.toString(16) || 'N/A'}`, 'success');
+        setConnected(true);
+        log('Connected!', 'success');
 
         MUP1.reset();
+        startReadLoop();
 
-        // Send ping to verify connection
-        setTimeout(() => sendPing(), 500);
+        // Send ping
+        setTimeout(sendPing, 300);
 
-      } catch (error) {
-        log(`Connection failed: ${error.message}`, 'error');
-        setStatus('disconnected', 'Disconnected');
-        port = null;
+      } catch (e) {
+        log(`Connection failed: ${e.message}`, 'error');
       }
     }
 
     async function disconnect() {
       try {
-        readLoopRunning = false;
-        if (reader) {
-          await reader.cancel();
-          reader.releaseLock();
-          reader = null;
-        }
-        if (writer) {
-          writer.releaseLock();
-          writer = null;
-        }
-        if (port) {
-          await port.close();
-          port = null;
-        }
-
-        setStatus('disconnected', 'Disconnected');
-        document.getElementById('connectBtn').textContent = 'Connect Serial Port';
-        document.getElementById('connectBtn').classList.remove('connected');
-        setButtonsEnabled(false);
-        log('Disconnected', 'info');
-
-      } catch (error) {
-        log(`Disconnect error: ${error.message}`, 'error');
-      }
+        if (reader) { await reader.cancel(); reader.releaseLock(); }
+        if (writer) { writer.releaseLock(); }
+        if (port) { await port.close(); }
+      } catch (e) {}
+      port = null; writer = null; reader = null;
+      setConnected(false);
+      log('Disconnected', 'info');
     }
 
     async function startReadLoop() {
-      readLoopRunning = true;
-      reader = port.readable.getReader();
-
       try {
-        while (readLoopRunning) {
+        while (connected) {
           const { value, done } = await reader.read();
           if (done) break;
           if (value) {
-            processReceivedData(value);
+            const hex = Array.from(value).slice(0,30).map(b => b.toString(16).padStart(2,'0')).join(' ');
+            log(`RX: ${hex}${value.length > 30 ? '...' : ''}`, 'rx');
+
+            const frames = MUP1.parse(value);
+            for (const frame of frames) {
+              handleFrame(frame);
+            }
           }
-        }
-      } catch (error) {
-        if (readLoopRunning) {
-          log(`Read error: ${error.message}`, 'error');
-        }
-      } finally {
-        reader.releaseLock();
-      }
-    }
-
-    function processReceivedData(data) {
-      const hexStr = Array.from(data).slice(0, 50).map(b => b.toString(16).padStart(2, '0')).join(' ');
-      log(`RX: ${hexStr}${data.length > 50 ? '...' : ''}`, 'rx');
-
-      const frames = MUP1.processBytes(data);
-      for (const frame of frames) {
-        handleMUP1Frame(frame);
-      }
-    }
-
-    function handleMUP1Frame(frame) {
-      switch (frame.typeChar) {
-        case 'P':
-          handlePongResponse(frame.data);
-          break;
-        case 'C':
-          handleCoAPResponse(frame.data);
-          break;
-        case 'T':
-          const traceText = new TextDecoder().decode(frame.data);
-          log(`TRACE: ${traceText}`, 'info');
-          break;
-        default:
-          log(`Frame type: ${frame.typeChar}`, 'info');
-      }
-    }
-
-    function handlePongResponse(data) {
-      const text = new TextDecoder().decode(data);
-      const parts = text.split(' ');
-      log(`PONG: Build=${parts[0]}, Uptime=${parts[1]}`, 'success');
-    }
-
-    function handleCoAPResponse(data) {
-      try {
-        const coap = CoAP.parseFrame(data);
-        log(`CoAP: ${coap.codeStr} (${coap.codeClass}.${coap.codeDetail})`, 'info');
-
-        if (coap.codeClass === 4 || coap.codeClass === 5) {
-          log(`Error: ${coap.codeStr}`, 'error');
-          pendingRequest = null;
-          return;
-        }
-
-        if (coap.payload && coap.payload.length > 0) {
-          responseBuffer.push(...coap.payload);
-        }
-
-        // Check for more blocks
-        if (coap.options.block2 && coap.options.block2.more) {
-          requestNextBlock(coap);
-          return;
-        }
-
-        // Response complete
-        if (responseBuffer.length > 0) {
-          processCompleteResponse();
-        } else {
-          log(`Success: ${coap.codeStr}`, 'success');
-          if (pendingRequest && pendingRequest.onSuccess) {
-            pendingRequest.onSuccess();
-          }
-        }
-
-        pendingRequest = null;
-
-      } catch (error) {
-        log(`CoAP parse error: ${error.message}`, 'error');
-      }
-    }
-
-    function requestNextBlock(lastResponse) {
-      if (!pendingRequest) return;
-      block2Num++;
-
-      const frame = CoAP.buildFrame({
-        type: CoAP.TYPE_CONFIRMABLE,
-        method: pendingRequest.method,
-        uriPaths: pendingRequest.uriPaths,
-        uriQueries: pendingRequest.uriQueries,
-        accept: pendingRequest.accept,
-        block2: { num: block2Num, more: 0, size: CoAP.BLOCK_SIZE }
-      });
-
-      sendMUP1Frame('c', frame.bytes);
-    }
-
-    function processCompleteResponse() {
-      try {
-        const payload = new Uint8Array(responseBuffer);
-        const decoded = decodeCBOR(payload);
-        log(`Received ${responseBuffer.length} bytes`, 'success');
-
-        if (pendingRequest && pendingRequest.onData) {
-          pendingRequest.onData(decoded);
         }
       } catch (e) {
-        log(`CBOR decode error: ${e.message}`, 'error');
+        if (connected) log(`Read error: ${e.message}`, 'error');
       }
-      responseBuffer = [];
+    }
+
+    function handleFrame(frame) {
+      if (frame.type === 'P') {
+        const text = new TextDecoder().decode(frame.data);
+        log(`PONG: ${text}`, 'success');
+      } else if (frame.type === 'C') {
+        const resp = CoAP.parseResponse(frame.data);
+        if (resp) {
+          if (resp.codeClass === 2) {
+            log(`Response: ${resp.code} OK`, 'success');
+          } else {
+            log(`Response: ${resp.code} ERROR`, 'error');
+          }
+        }
+      }
     }
 
     async function send(data) {
-      if (!writer) {
-        log('Not connected', 'error');
-        return false;
-      }
+      if (!writer) return false;
       try {
         await writer.write(data);
-        const hexStr = Array.from(data).slice(0, 30).map(b => b.toString(16).padStart(2, '0')).join(' ');
-        log(`TX: ${hexStr}${data.length > 30 ? '...' : ''}`, 'tx');
+        const hex = Array.from(data).slice(0,30).map(b => b.toString(16).padStart(2,'0')).join(' ');
+        log(`TX: ${hex}${data.length > 30 ? '...' : ''}`, 'tx');
         return true;
-      } catch (error) {
-        log(`Send error: ${error.message}`, 'error');
+      } catch (e) {
+        log(`Send error: ${e.message}`, 'error');
         return false;
       }
-    }
-
-    async function sendMUP1Frame(type, data) {
-      const frame = MUP1.encodeFrame(type, data);
-      return await send(frame);
     }
 
     async function sendPing() {
-      const frame = MUP1.createPingFrame();
-      await send(frame);
+      await send(MUP1.createPing());
     }
 
-    async function sendCoAPRequest(method, urlPath, queries = [], payload = null, callbacks = {}) {
-      responseBuffer = [];
-      block2Num = 0;
-
-      let uriPaths = [];
-      let uriQueries = [...queries];
-
-      if (urlPath.includes('?')) {
-        const [path, queryStr] = urlPath.split('?');
-        uriPaths = path.split('/').filter(p => p.length > 0);
-        uriQueries = uriQueries.concat(queryStr.split('&'));
-      } else {
-        uriPaths = urlPath.split('/').filter(p => p.length > 0);
-      }
-
-      pendingRequest = {
-        method,
-        uriPaths,
-        uriQueries,
-        accept: CoAP.getDefaultAccept(method),
-        ...callbacks
-      };
-
-      const contentFormat = payload ? CoAP.getDefaultContentFormat(method) : null;
-
-      const frame = CoAP.buildFrame({
-        type: CoAP.TYPE_CONFIRMABLE,
-        method,
-        uriPaths,
-        uriQueries,
-        contentFormat,
-        accept: pendingRequest.accept,
-        payload,
-        block2: { num: 0, more: 0, size: CoAP.BLOCK_SIZE }
-      });
-
-      await sendMUP1Frame('c', frame.bytes);
-    }
-
-    // Simple CBOR decoder
-    function decodeCBOR(data) {
-      let offset = 0;
-
-      const decode = () => {
-        if (offset >= data.length) return null;
-
-        const byte = data[offset++];
-        const majorType = byte >> 5;
-        let additionalInfo = byte & 0x1f;
-        let value;
-
-        if (additionalInfo < 24) {
-          value = additionalInfo;
-        } else if (additionalInfo === 24) {
-          value = data[offset++];
-        } else if (additionalInfo === 25) {
-          value = (data[offset] << 8) | data[offset + 1];
-          offset += 2;
-        } else if (additionalInfo === 26) {
-          value = (data[offset] << 24) | (data[offset + 1] << 16) |
-                  (data[offset + 2] << 8) | data[offset + 3];
-          offset += 4;
-        } else if (additionalInfo === 31) {
-          value = -1;
-        } else {
-          value = 0;
-        }
-
-        switch (majorType) {
-          case 0: return value;
-          case 1: return -1 - value;
-          case 2: {
-            const bytes = data.slice(offset, offset + value);
-            offset += value;
-            return Array.from(bytes);
-          }
-          case 3: {
-            const textBytes = data.slice(offset, offset + value);
-            offset += value;
-            return new TextDecoder().decode(textBytes);
-          }
-          case 4: {
-            const arr = [];
-            if (value === -1) {
-              while (data[offset] !== 0xff) arr.push(decode());
-              offset++;
-            } else {
-              for (let i = 0; i < value; i++) arr.push(decode());
-            }
-            return arr;
-          }
-          case 5: {
-            const map = {};
-            if (value === -1) {
-              while (data[offset] !== 0xff) {
-                const key = decode();
-                const val = decode();
-                map[key] = val;
-              }
-              offset++;
-            } else {
-              for (let i = 0; i < value; i++) {
-                const key = decode();
-                const val = decode();
-                map[key] = val;
-              }
-            }
-            return map;
-          }
-          case 7:
-            if (additionalInfo === 20) return false;
-            if (additionalInfo === 21) return true;
-            if (additionalInfo === 22) return null;
-            return value;
-          default:
-            return value;
-        }
-      };
-
-      const results = [];
-      while (offset < data.length) {
-        results.push(decode());
-      }
-      return results.length === 1 ? results[0] : results;
-    }
-
-    // Simple CBOR encoder
-    function encodeCBOR(value) {
-      const encode = (val) => {
-        if (val === null || val === undefined) return [0xf6];
-        if (typeof val === 'boolean') return val ? [0xf5] : [0xf4];
-        if (typeof val === 'number') {
-          if (Number.isInteger(val) && val >= 0) {
-            if (val < 24) return [val];
-            if (val < 256) return [0x18, val];
-            if (val < 65536) return [0x19, val >> 8, val & 0xff];
-            return [0x1a, (val >> 24) & 0xff, (val >> 16) & 0xff, (val >> 8) & 0xff, val & 0xff];
-          }
-          if (Number.isInteger(val) && val < 0) {
-            const negVal = -1 - val;
-            if (negVal < 24) return [0x20 | negVal];
-            if (negVal < 256) return [0x38, negVal];
-            return [0x39, negVal >> 8, negVal & 0xff];
-          }
-        }
-        if (typeof val === 'string') {
-          const encoded = new TextEncoder().encode(val);
-          const header = [];
-          if (encoded.length < 24) {
-            header.push(0x60 | encoded.length);
-          } else if (encoded.length < 256) {
-            header.push(0x78, encoded.length);
-          } else {
-            header.push(0x79, encoded.length >> 8, encoded.length & 0xff);
-          }
-          return [...header, ...encoded];
-        }
-        if (Array.isArray(val)) {
-          const header = val.length < 24 ? [0x80 | val.length] : [0x98, val.length];
-          let items = [];
-          for (const item of val) items = items.concat(encode(item));
-          return [...header, ...items];
-        }
-        if (typeof val === 'object') {
-          const keys = Object.keys(val);
-          const header = keys.length < 24 ? [0xa0 | keys.length] : [0xb8, keys.length];
-          let items = [];
-          for (const key of keys) {
-            const keyNum = parseInt(key);
-            items = items.concat(encode(isNaN(keyNum) ? key : keyNum));
-            items = items.concat(encode(val[key]));
-          }
-          return [...header, ...items];
-        }
-        return [0xf6];
-      };
-      return new Uint8Array(encode(value));
-    }
-
-    // YANG SID Definitions (from .sid files)
-    // These are the YANG Schema Item iDentifiers for CORECONF protocol
-    const YANG_SIDS = {
-      // ietf-interfaces module SIDs
-      INTERFACES: 2005,           // /ietf-interfaces:interfaces
-      INTERFACE: 2033,            // /ietf-interfaces:interfaces/interface (list)
-      INTERFACE_NAME: 2042,       // /ietf-interfaces:interfaces/interface/name
-
-      // mchp-velocitysp-port module SIDs (augments interface)
-      ETH_QOS: 8048,                          // eth-qos container
-      ETH_QOS_CONFIG: 8049,                   // eth-qos/config
-      TRAFFIC_CLASS_SHAPERS: 8051,            // traffic-class-shapers (list)
-      TRAFFIC_CLASS_SHAPERS_TC: 8052,         // traffic-class (key)
-      CREDIT_BASED: 8053,                     // credit-based container
-      IDLE_SLOPE: 8054,                       // idle-slope leaf
-    };
-
-    // Build CBOR Instance Identifier (IID) for iPATCH
-    // IID format for list entries: [SID, key1, key2, ...]
-    function buildCBSIID(portName, trafficClass) {
-      // Path: /ietf-interfaces:interfaces/interface[name='X']/mchp-velocitysp-port:eth-qos/config/traffic-class-shapers[traffic-class=Y]
-      // The SID points to the deepest node: traffic-class-shapers
-      // Keys are: interface name, traffic-class
-      return [YANG_SIDS.TRAFFIC_CLASS_SHAPERS, portName, trafficClass];
-    }
-
-    // Build CBOR value with delta-SID encoding
-    // Delta-SID = child.sid - parent.sid
-    function buildCBSValue(idleSlope) {
-      // Parent is traffic-class-shapers (SID 8051)
-      // credit-based container (SID 8053) -> delta = 8053 - 8051 = 2
-      // idle-slope leaf (SID 8054) -> delta from credit-based = 8054 - 8053 = 1
-      const deltaCreditBased = YANG_SIDS.CREDIT_BASED - YANG_SIDS.TRAFFIC_CLASS_SHAPERS; // = 2
-      const deltaIdleSlope = YANG_SIDS.IDLE_SLOPE - YANG_SIDS.CREDIT_BASED; // = 1
-
-      return {
-        [deltaCreditBased]: {
-          [deltaIdleSlope]: idleSlope
-        }
-      };
-    }
-
+    // ============================================
     // CBS Operations
+    // ============================================
     async function applyCBS() {
       if (selectedPorts.size === 0) {
         log('Please select at least one port', 'error');
@@ -852,239 +685,75 @@
 
       const tc = parseInt(document.getElementById('trafficClass').value);
       const idleSlope = parseInt(document.getElementById('idleSlope').value);
-      const ports = Array.from(selectedPorts);
 
-      log(`Applying CBS: Ports ${ports.join(',')}, TC${tc}, ${idleSlope} kbps`, 'info');
-      document.getElementById('applyBtn').disabled = true;
+      log(`Applying CBS: TC${tc}, ${idleSlope} kbps to ${selectedPorts.size} ports`, 'info');
 
-      for (const portNum of ports) {
+      for (const portNum of selectedPorts) {
         await applyCBSToPort(portNum, tc, idleSlope);
-        await new Promise(resolve => setTimeout(resolve, 500)); // Wait between requests
+        await new Promise(r => setTimeout(r, 300));
       }
 
-      document.getElementById('applyBtn').disabled = false;
       log('CBS configuration complete', 'success');
     }
 
     async function applyCBSToPort(portNum, tc, idleSlope) {
-      // Build iPATCH CBOR payload
-      // Format: { IID => value }
-      // IID: [SID, key1, key2, ...]
-      // Value: delta-SID encoded object
+      const payload = buildCBSPayload(String(portNum), tc, idleSlope);
+      const coap = CoAP.buildFrame(CoAP.CODE_IPATCH, 'c', payload);
+      const frame = MUP1.encode('c', coap);
 
-      const iid = buildCBSIID(`${portNum}`, tc);
-      const value = buildCBSValue(idleSlope);
-
-      // iPATCH payload is a CBOR map: { IID => value }
-      const cbsPayload = {};
-      cbsPayload[JSON.stringify(iid)] = value;
-
-      // Encode as CBOR with array key (IID)
-      const payload = encodeCBORInstance(iid, value);
-
-      log(`Setting CBS on port ${portNum}, TC${tc}...`, 'info');
-      log(`IID: [${iid.join(', ')}]`, 'info');
-
-      await sendCoAPRequest(CoAP.CODE_IPATCH, 'c', [], payload, {
-        onSuccess: () => {
-          log(`CBS applied to port ${portNum}`, 'success');
-        }
-      });
+      log(`Setting CBS on port ${portNum}: TC${tc}, ${idleSlope} kbps`, 'info');
+      await send(frame);
     }
 
-    // Encode a single CBOR instance for iPATCH: { IID => value }
-    function encodeCBORInstance(iid, value) {
-      const result = [];
-
-      // Map header (1 item)
-      result.push(0xa1);
-
-      // Encode IID as array
-      const iidBytes = encodeCBORArray(iid);
-      result.push(...iidBytes);
-
-      // Encode value as map
-      const valueBytes = encodeCBOR(value);
-      result.push(...valueBytes);
-
-      return new Uint8Array(result);
-    }
-
-    // Encode array for IID
-    function encodeCBORArray(arr) {
-      const result = [];
-      if (arr.length < 24) {
-        result.push(0x80 | arr.length);
-      } else {
-        result.push(0x98, arr.length);
-      }
-      for (const item of arr) {
-        const itemBytes = encodeCBOR(item);
-        result.push(...Array.from(itemBytes));
-      }
-      return result;
-    }
-
-    async function clearSelectedCBS() {
+    async function clearCBS() {
       if (selectedPorts.size === 0) {
         log('Please select ports to clear', 'error');
         return;
       }
 
       const tc = parseInt(document.getElementById('trafficClass').value);
-      const ports = Array.from(selectedPorts);
-      log(`Clearing CBS on ports: ${ports.join(',')}, TC${tc}`, 'info');
+      log(`Clearing CBS TC${tc} on ${selectedPorts.size} ports`, 'info');
 
-      for (const portNum of ports) {
+      for (const portNum of selectedPorts) {
         await clearCBSOnPort(portNum, tc);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(r => setTimeout(r, 300));
       }
 
       log('CBS cleared', 'success');
     }
 
     async function clearCBSOnPort(portNum, tc) {
-      // To clear CBS, set the value to null in iPATCH
-      const iid = buildCBSIID(`${portNum}`, tc);
+      // To clear, send with null value
+      const iid = [SID.TRAFFIC_CLASS_SHAPERS, String(portNum)];
 
-      // For deletion, value is null
-      const payload = encodeCBORInstance(iid, null);
+      // Build CBOR: { IID => null }
+      const result = [];
+      result.push(0xa1);  // map(1)
+      result.push(0x82);  // array(2)
+      result.push(0x19, (SID.TRAFFIC_CLASS_SHAPERS >> 8) & 0xff, SID.TRAFFIC_CLASS_SHAPERS & 0xff);
+      const nameBytes = new TextEncoder().encode(String(portNum));
+      result.push(0x60 | nameBytes.length);
+      result.push(...nameBytes);
+      result.push(0xf6);  // null
 
-      log(`Clearing CBS on port ${portNum}, TC${tc}...`, 'info');
-      await sendCoAPRequest(CoAP.CODE_IPATCH, 'c', [], payload);
+      const payload = new Uint8Array(result);
+      const coap = CoAP.buildFrame(CoAP.CODE_IPATCH, 'c', payload);
+      const frame = MUP1.encode('c', coap);
+
+      log(`Clearing CBS on port ${portNum}`, 'info');
+      await send(frame);
     }
 
-    async function refreshConfig() {
-      log('Fetching current configuration...', 'info');
-
-      // FETCH request for traffic-class-shapers on all ports
-      // Use FETCH with YANG identifiers content type
-      const fetchPayload = buildFetchPayload();
-
-      await sendCoAPRequest(CoAP.CODE_FETCH, 'c', ['c=c'], fetchPayload, {
-        onData: (data) => {
-          parseAndDisplayConfig(data);
-        }
-      });
-    }
-
-    // Build FETCH payload to query all traffic-class-shapers
-    function buildFetchPayload() {
-      // FETCH uses YANG identifiers - just the SID
-      // Query all traffic-class-shapers
-      return encodeCBOR(YANG_SIDS.TRAFFIC_CLASS_SHAPERS);
-    }
-
-    function parseAndDisplayConfig(data) {
-      currentConfig = [];
-      log(`Parsing config response...`, 'info');
-
-      try {
-        // The response is CBOR with delta-SID encoded data
-        // Parse the structure to extract CBS configurations
-        if (Array.isArray(data)) {
-          for (const item of data) {
-            parseCBSFromResponse(item);
-          }
-        } else if (typeof data === 'object') {
-          parseCBSFromResponse(data);
-        }
-      } catch (e) {
-        log(`Parse error: ${e.message}`, 'error');
-        console.error('Parse error:', e, data);
-      }
-
-      renderConfig();
-    }
-
-    function parseCBSFromResponse(data) {
-      // Response format for FETCH: { IID => value }
-      // IID is [SID, keys...]
-      // Value has delta-SID encoded data
-
-      if (typeof data !== 'object') return;
-
-      for (const [key, value] of Object.entries(data)) {
-        // Key might be an array (IID) encoded as string
-        let iid;
-        try {
-          if (Array.isArray(key)) {
-            iid = key;
-          } else if (typeof key === 'string' && key.startsWith('[')) {
-            iid = JSON.parse(key);
-          } else {
-            continue;
-          }
-        } catch {
-          continue;
-        }
-
-        // Check if this is a traffic-class-shapers entry
-        if (iid[0] === YANG_SIDS.TRAFFIC_CLASS_SHAPERS && iid.length >= 3) {
-          const portName = iid[1];
-          const tc = iid[2];
-
-          // Extract idle-slope from value
-          // Delta encoding: credit-based delta=2, idle-slope delta=1
-          const deltaCreditBased = YANG_SIDS.CREDIT_BASED - YANG_SIDS.TRAFFIC_CLASS_SHAPERS;
-          const deltaIdleSlope = YANG_SIDS.IDLE_SLOPE - YANG_SIDS.CREDIT_BASED;
-
-          if (value && value[deltaCreditBased] && value[deltaCreditBased][deltaIdleSlope]) {
-            currentConfig.push({
-              port: parseInt(portName),
-              tc: tc,
-              idleSlope: value[deltaCreditBased][deltaIdleSlope]
-            });
-          }
-        }
-      }
-    }
-
-    function renderConfig() {
-      const list = document.getElementById('configList');
-      if (currentConfig.length === 0) {
-        list.innerHTML = `
-          <div class="empty-state">
-            <p>No CBS configured</p>
-          </div>
-        `;
-        return;
-      }
-
-      list.innerHTML = currentConfig.map(c => `
-        <div class="config-item">
-          <div class="config-info">
-            <span class="config-port">Port ${c.port}</span>
-            <span class="config-details">TC${c.tc} | Idle Slope: ${(c.idleSlope/1000).toFixed(0)} Mbps</span>
-          </div>
-          <div class="config-actions">
-            <button class="delete-btn" onclick="deleteCBS(${c.port}, ${c.tc})">Delete</button>
-          </div>
-        </div>
-      `).join('');
-    }
-
-    async function deleteCBS(port, tc) {
-      log(`Deleting CBS: Port ${port}, TC${tc}`, 'info');
-      await clearCBSOnPort(port);
-      setTimeout(refreshConfig, 500);
-    }
-
-    function applyPreset(ports, tc, idleSlope) {
-      selectPorts(ports);
-      document.getElementById('trafficClass').value = tc;
-      document.getElementById('idleSlope').value = idleSlope;
-      log(`Preset loaded: Ports ${ports.join(',')}, TC${tc}, ${idleSlope} kbps`, 'info');
-    }
-
+    // ============================================
     // Check Web Serial support
+    // ============================================
     if (!('serial' in navigator)) {
-      log('Web Serial API not supported! Use Chrome or Edge.', 'error');
       document.getElementById('connectBtn').disabled = true;
+      document.getElementById('deviceInfo').textContent = 'Web Serial API not supported. Use Chrome or Edge.';
     }
 
     // Initialize
-    initPorts();
+    initUI();
   </script>
 </body>
 </html>
